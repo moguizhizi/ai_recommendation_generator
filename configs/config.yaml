@@ -1,0 +1,9 @@
+llm:
+  type: local          # local 或 api
+  model_path: /data/models/qwen2
+  api_key: sk-xxxxx
+  base_url: https://api.xxx.com/v1
+
+runtime:
+  timeout: 60
+  max_retries: 3
