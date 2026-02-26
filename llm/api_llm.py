@@ -22,7 +22,7 @@ class ApiLLM(BaseLLM):
             "Content-Type": "application/json",
         }
 
-        # ✅ 有 key 就加鉴权头；没 key 就不加
+        # 有 key 就加鉴权头；没 key 就不加
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
