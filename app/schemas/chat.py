@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from typing import Literal
 
-class ChatRequest(BaseModel):
+class AIRecPlanRequest(BaseModel):
     user_id: str = Field(..., title="用户ID", description="平台内唯一用户标识", example="1845646199363297282")
     patient_code: str = Field(..., title="患者编码", description="患者唯一业务编码", example="ETYY241028700")
 
@@ -19,7 +19,7 @@ class TrainingModule(BaseModel):
     module_name: str = Field(..., title="模块名称", description="如：优势能力拓展模块 / 核心能力强化模块")
     items: List[TrainingItem] = Field(..., title="模块内训练项列表")
 
-class ChatResponse(BaseModel):
+class AIRecPlanResponse(BaseModel):
     user_type: Literal["优势倾向型", "潜能倾向型", "专项优势型", "蓄力成长型"]
     overview: str = Field(..., title="方案开篇概述", description="固定开篇文案，用于向家长说明本次AI方案的整体目标")
     training_plan_intro: str = Field(..., title="训练计划引导语", description="对训练模块的整体说明与导读")
