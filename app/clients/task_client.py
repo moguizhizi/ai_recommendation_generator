@@ -1,6 +1,6 @@
 # app/clients/task_client.py
 
-def fetch_task_info(user_id: str) -> dict:
+def fetch_task_info() -> dict:
     # 调外部接口，返回原始 taskinfo
     return {
         "tasks": [
