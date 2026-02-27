@@ -1,11 +1,11 @@
 # app/controllers/chat_controller.py
 from fastapi import APIRouter
 from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse
-from app.services.chat_service import chat
+from app.services.chat_service import  generate_ai_plan
 
 router = APIRouter()
 
 @router.post("/chat", response_model=AIRecPlanResponse)
 def chat_api(req: AIRecPlanRequest):
-    result = chat(req.prompt)
+    result = generate_ai_plan(req)
     return AIRecPlanResponse(result=result)
