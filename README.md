@@ -1,3 +1,6 @@
+## 🗂️ 项目结构
+
+```text
 project_root/
 ├── app/
 │   ├── main.py                    # FastAPI 入口
