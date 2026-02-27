@@ -1,6 +1,6 @@
 # app/services/chat_service.py
 from app.clients.user_profile_client import get_user_profile
-from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse, ChatResponse
+from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse
 from app.services.prompt_builder import build_ai_plan_prompt
 from app.services.response_parser import parse_ai_plan_response
 from app.services.plan_rule_engine import get_fixed_templates, calc_user_type
