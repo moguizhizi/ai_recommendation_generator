@@ -11,8 +11,9 @@ project_root/
 │   │   └── health_controller.py   # /health（健康检查）
 │   │
 │   ├── services/                  # 🧠 业务编排层（核心业务逻辑）
-│   │   ├── chat_service.py        # AI 训练方案主流程编排（调用规则引擎 + LLM + 组装响应）
+│   │   ├── chat_service.py        # AI 训练方案主流程编排（规则引擎 + LLM + 响应组装）
 │   │   ├── plan_rule_engine.py    # 🧩 训练方案规则引擎（用户类型判定 / 模块策略 / 难度规则）
+│   │   ├── task_processor.py      # 🧠 外部 taskinfo 的本地加工处理（清洗 / 过滤 / 结构转换）
 │   │   ├── auth_service.py        # Key / Token 校验
 │   │   ├── rate_limit_service.py  # 限流 / 配额
 │   │   └── usage_service.py       # 计量 / 计费
@@ -20,7 +21,8 @@ project_root/
 │   ├── clients/                   # 🔌 外部服务依赖（你调别人）
 │   │   ├── payment_client.py      # 支付 / 账单服务客户端
 │   │   ├── vector_client.py       # 向量库 / 知识库客户端
-│   │   └── email_client.py        # 邮件 / 短信通知客户端
+│   │   ├── email_client.py        # 邮件 / 短信通知客户端
+│   │   └── task_client.py         # 📡 外部任务系统客户端（获取用户 taskinfo 原始数据）
 │   │
 │   ├── schemas/                   # 📄 请求 / 响应 DTO（Pydantic Models）
 │   │   ├── chat.py                # AI 训练方案请求 / 响应结构
