@@ -9,7 +9,7 @@ class AIRecPlanRequest(BaseModel):
 
 class TrainingItem(BaseModel):
     name: str = Field(..., title="训练项名称", description="如：感知觉进阶训练、注意力巩固训练")
-    tasks: List[str] = Field(..., title="具体训练任务列表", description="该训练项包含的具体游戏/任务名称")
+    tasks: str = Field(..., title="具体训练任务列表", description="该训练项包含的具体游戏/任务名称")
     difficulty: str = Field(..., title="训练难度", description="如：当前能力层级+0.5~1级")
     frequency: str = Field(..., title="训练频次", description="如：每日1次，每次4-8分钟")
     goal: str = Field(..., title="训练目标", description="该训练项期望达到的能力提升目标")
