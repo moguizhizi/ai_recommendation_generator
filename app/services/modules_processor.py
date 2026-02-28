@@ -88,7 +88,7 @@ def calc_difficulty(task_info: Dict) -> str:
     return "当前能力层级+0.5~1级"
 
 
-def fetch_frequency(task_info: Dict) -> str:
+def fetch_frequency(task_info: Dict, paradigm_tasks) -> str:
     """
     本地接口：根据 task_info 中的训练时长，生成训练频次文案
 
