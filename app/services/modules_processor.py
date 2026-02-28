@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from collections import defaultdict
 import random
 
@@ -79,11 +79,45 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
     return ""
 
 
-def calc_difficulty(task_info: Dict) -> str:
+def calc_difficulty(
+    last_task: Optional[Task], paradigm_tasks: Dict[str, List[Task]]
+) -> str:
     """
-    本地规则：计算训练难度
+    本地规则：根据历史任务难度 + 本次推荐任务难度区间，生成训练难度文案
+
+    规则：
+    1. 从 paradigm_tasks 中筛选 difficulty > last_task.difficulty 的任务
+    2. 计算难度差值区间（min_diff ~ max_diff）
+    3. 映射为：当前能力层级 + min_diff ~ max_diff 级
+    4. 若 last_task 或 difficulty 缺失 → 使用默认兜底文案
     """
-    return "当前能力层级+0.5~1级"
+
+    DEFAULT = "当前能力层级+0.5~1级"
+
+    if not last_task or not isinstance(last_task.difficulty, (int, float)):
+        return DEFAULT
+
+    base = float(last_task.difficulty)
+
+    diffs: List[float] = []
+
+    for tasks in paradigm_tasks.values():
+        for task in tasks:
+            if isinstance(task.difficulty, (int, float)) and task.difficulty > base:
+                diffs.append(round(task.difficulty - base, 1))
+
+    # --- 没有比上一次更高的难度，兜底 ---
+    if not diffs:
+        return DEFAULT
+
+    diffs.sort()
+    min_diff, max_diff = diffs[0], diffs[-1]
+
+    # --- 只提升一个等级 ---
+    if min_diff == max_diff:
+        return f"当前能力层级+{min_diff}级"
+
+    return f"当前能力层级+{min_diff}~{max_diff}级"
 
 
 def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
