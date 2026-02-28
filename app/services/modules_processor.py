@@ -2,28 +2,34 @@ from typing import Dict, List
 from collections import defaultdict
 
 
-def fetch_tasks_by_ability(ability_key: str, task_info: Dict) -> str:
+def get_missed_tasks_grouped_by_paradigm(
+    ability_key: str, task_info: Dict
+) -> Dict[str, List[str]]:
     """
     本地接口：根据能力类型，从 task_info.weekly_missed_task_infos 中匹配训练范式（paradigm + task_name）
 
+    返回结构：
+    {
+        "长度知觉任务": ["小马过河", "测距打鼠"],
+        "no_paradigm": ["任务A", "任务B"]
+    }
+
     规则：
-    1. ability_key 需匹配 level1_brain 或 level2_brain
+    1. ability_key 匹配 level1_brain 或 level2_brain
     2. 按 paradigm 分组
-    3. 同一个 paradigm 最多取 2 个 task
-    4. 返回格式：范式（task1、task2），多个范式用中文顿号拼接
-       例：长度知觉任务（小马过河、测距打鼠）、多感官协同匹配（找不同）
+    3. 无 paradigm 的 task 统一放入 no_paradigm
     """
 
     missed_tasks = task_info.get("weekly_missed_task_infos", [])
 
-    # paradigm -> [task_name1, task_name2]
+    # paradigm -> [task_name1, task_name2, ...]
     paradigm_tasks: Dict[str, List[str]] = defaultdict(list)
 
     for t in missed_tasks:
-        paradigm = t.get("paradigm")
         task_name = t.get("name")
+        paradigm = t.get("paradigm")
 
-        if not paradigm or not task_name:
+        if not task_name:
             continue
 
         # ability_key 匹配一级或二级脑能力
@@ -33,22 +39,16 @@ def fetch_tasks_by_ability(ability_key: str, task_info: Dict) -> str:
         ):
             continue
 
-        # 同一个范式最多取 2 个 task
-        if len(paradigm_tasks[paradigm]) >= 2:
-            break
+        # 没有范式的统一归类
+        if not paradigm:
+            paradigm_tasks["no_paradigm"].append(task_name)
+        else:
+            paradigm_tasks[paradigm].append(task_name)
 
-        paradigm_tasks[paradigm].append(task_name)
-
-    # --- 组装展示字符串 ---
-    results: List[str] = []
-    for paradigm, task_names in paradigm_tasks.items():
-        task_str = "、".join(task_names)
-        results.append(f"{paradigm}（{task_str}）")
-
-    return "、".join(results)
+    return dict(paradigm_tasks)
 
 
-def calc_difficulty(ability_key: str, score: int) -> str:
+def calc_difficulty(task_info: Dict) -> str:
     """
     本地规则：计算训练难度
     """
