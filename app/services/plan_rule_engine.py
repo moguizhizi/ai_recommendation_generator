@@ -1,6 +1,13 @@
 # app/services/plan_rule_engine.py
 from app.core.constants import ModuleName, UserType, ScoreThreshold
 from typing import Dict, List
+from app.schemas.chat import TrainingItem, TrainingModule
+from app.services.modules_processor import (
+    fetch_tasks_by_ability,
+    calc_difficulty,
+    fetch_frequency,
+    generate_goal_by_llm,
+)
 
 ABILITY_NAME_MAP = {
     "memory": "记忆力",
@@ -68,40 +75,53 @@ def calc_user_type(profile: dict) -> str:
     return UserType.GROWTH.value
 
 
-def build_advantage_user_modules(level1_scores: Dict[str, int]) -> Dict[str, List[str]]:
+def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
     """
     构建【优势倾向型】用户的训练模块结构
-
-    规则：
-    1. 一级脑能力 >= 100 的项作为候选
-    2. 按分数降序排序
-    3. 取最高的 2 项（不足 2 项则全取） → 优势能力拓展模块
-    4. 剩余所有能力 → 能力均衡训练模块
     """
 
     # --- 1️⃣ 过滤 >= 100 的能力 ---
     qualified = [
-        (ability, score) for ability, score in level1_scores.items() if score >= 100
+        (ability, score)
+        for ability, score in level1_scores.items()
+        if score >= ScoreThreshold.ADVANTAGE_LINE
     ]
 
     # --- 2️⃣ 按分数降序排序 ---
     qualified_sorted = sorted(qualified, key=lambda x: x[1], reverse=True)
 
-    # --- 3️⃣ 取前 2 项（可能只有 0/1 项）---
+    # --- 3️⃣ 取前 2 项 ---
     top_two = [ability for ability, _ in qualified_sorted[:2]]
 
     # --- 4️⃣ 剩余全部能力 ---
     balanced = [ability for ability in level1_scores.keys() if ability not in top_two]
 
-    # --- 5️⃣ 构建训练名称 ---
-    advantage_trainings = [f"{ABILITY_NAME_MAP.get(a, a)}进阶训练" for a in top_two]
+    # --- 5️⃣ 组装 TrainingItem ---
+    def build_training_item(ability_key: str, score: int, suffix: str) -> TrainingItem:
+        ability_name_cn = ABILITY_NAME_MAP.get(ability_key, ability_key)
 
-    balanced_trainings = [f"{ABILITY_NAME_MAP.get(a, a)}巩固训练" for a in balanced]
+        return TrainingItem(
+            name=f"{ability_name_cn}{suffix}",
+            tasks=fetch_tasks_by_ability(ability_key),
+            difficulty=calc_difficulty(ability_key, score),
+            frequency=fetch_frequency(),
+            goal=generate_goal_by_llm(ability_name_cn),
+            description="低压力、高成功体验",
+        )
 
-    return {
-        ModuleName.ADVANTAGE_EXPAND: advantage_trainings,
-        ModuleName.BALANCED_TRAIN: balanced_trainings,
-    }
+    advantage_items = [
+        build_training_item(a, level1_scores[a], "进阶训练") for a in top_two
+    ]
+
+    balanced_items = [
+        build_training_item(a, level1_scores[a], "巩固训练") for a in balanced
+    ]
+
+    # --- 6️⃣ 返回模块结构 ---
+    return [
+        TrainingModule(module_name=ModuleName.ADVANTAGE_EXPAND, items=advantage_items),
+        TrainingModule(module_name=ModuleName.BALANCED_TRAIN, items=balanced_items),
+    ]
 
 
 # def build_recommended_modules(user_type: str, profile: dict):

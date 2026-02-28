@@ -14,12 +14,7 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
     tasks = raw_task_info.get("tasks", [])
 
     # --- 1️⃣ 按能力分组 ---
-    grouped = {
-        "perception": [],
-        "exec": [],
-        "attention": [],
-        "memory": []
-    }
+    grouped = {"perception": [], "exec": [], "attention": [], "memory": []}
 
     # --- 2️⃣ 构建 task_id -> task_info 的索引 ---
     task_index = {}
@@ -57,19 +52,21 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
         if not raw_task:
             continue
 
-        missed_task_infos.append({
-            "id": task_id,
-            "name": raw_task.get("name"),
-            "difficulty": raw_task.get("difficulty"),
-            "life_desc": raw_task.get("life_desc"),            # 生活场景描述
-            "duration_min": raw_task.get("duration_min"),      # 建议训练时长（分钟）
-            "ability": raw_task.get("ability"),                # perception / exec / attention / memory
-            "primary_brain_ability": raw_task.get("primary_brain_ability"),     # 一级脑能力
-            "secondary_brain_ability": raw_task.get("secondary_brain_ability"), # 二级脑能力
-        })
+        missed_task_infos.append(
+            {
+                "id": task_id,
+                "name": raw_task.get("name"),
+                "difficulty": raw_task.get("difficulty"),
+                "life_desc": raw_task.get("life_desc"),  # 生活场景描述
+                "paradigm": raw_task.get("paradigm"),  # 范式
+                "duration_min": raw_task.get("duration_min"),  # 建议训练时长（分钟）
+                "level1_brain": raw_task.get("level1_brain"),  # 一级脑能力类别
+                "level2_brain": raw_task.get("level2_brain"),  # 二级脑能力类别
+            }
+        )
 
     return {
-        "grouped_tasks": grouped,              
-        "last_task_info": last_task_info,      
-        "weekly_missed_task_infos": missed_task_infos
+        "grouped_tasks": grouped,
+        "last_task_info": last_task_info,
+        "weekly_missed_task_infos": missed_task_infos,
     }
