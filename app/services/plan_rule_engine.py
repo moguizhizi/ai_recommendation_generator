@@ -2,58 +2,51 @@
 
 def calc_user_type(profile: dict) -> str:
     """
-    根据用户训练数据，判定用户类型：
-    - 优势倾向型
-    - 潜能倾向型
-    - 专项优势型
-    - 蓄力成长型
+    根据用户训练数据，判定用户类型（按顺序命中即返回）：
+    1️⃣ 优势倾向型:   任意一级脑能力 ≥ 100
+    2️⃣ 潜能倾向型:   任意一级脑能力 ∈ [90, 100)
+    3️⃣ 专项优势型:   任意二级脑能力 > 100
+    4️⃣ 蓄力成长型:   所有一级脑能力 < 90
     """
 
-    perception = profile.get("perception_score", 0)
-    exec_score = profile.get("exec_score", 0)
-    attention = profile.get("attention", 0)
-    memory = profile.get("memory", 0)
+    # --- 一级脑能力 ---
+    level1_scores = [
+        profile.get("perception_score", 0),
+        profile.get("exec_score", 0),
+        profile.get("attention", 0),
+        profile.get("memory", 0),
+    ]
 
-    scores = {
-        "perception": perception,
-        "exec": exec_score,
-        "attention": attention,
-        "memory": memory
-    }
+    valid_level1 = [v for v in level1_scores if isinstance(v, (int, float)) and v > 0]
 
-    valid_scores = {k: v for k, v in scores.items() if v > 0}
-    if not valid_scores:
-        return "蓄力成长型"
+    # --- 二级脑能力 ---
+    # 结构示例：
+    # "level2_scores": {
+    #     "集中性注意": 110,
+    #     "分配性注意": 85,
+    #     "工作记忆": 95
+    # }
+    level2_scores = profile.get("level2_scores", {})
+    valid_level2 = [v for v in level2_scores.values() if isinstance(v, (int, float)) and v > 0]
 
-    max_ability = max(valid_scores, key=valid_scores.get)
-    max_score = valid_scores[max_ability]
-    min_score = min(valid_scores.values())
-    avg_score = sum(valid_scores.values()) / len(valid_scores)
-
-    # 🔥 1️⃣ 专项优势型（单项明显高）
-    # 规则：最高项 ≥ 110，且比均值高 20 分以上
-    if max_score >= 110 and (max_score - avg_score) >= 20:
-        return "专项优势型"
-
-    # 🔥 2️⃣ 优势倾向型（双高或多项较高）
-    # 规则：至少 2 项 ≥ 150
-    high_count = sum(1 for s in valid_scores.values() if s >= 150)
-    if high_count >= 2:
+    # --- 1️⃣ 优势倾向型 ---
+    if any(v >= 100 for v in valid_level1):
         return "优势倾向型"
 
-    # 🔥 3️⃣ 潜能倾向型（整体偏低，但有潜力）
-    # 规则：至少 2 项介于 80~110
-    mid_count = sum(1 for s in valid_scores.values() if 80 <= s < 110)
-    if mid_count >= 2 and avg_score < 120:
+    # --- 2️⃣ 潜能倾向型 ---
+    if any(90 <= v < 100 for v in valid_level1):
         return "潜能倾向型"
 
-    # 🔥 4️⃣ 蓄力成长型（整体偏低或波动明显）
-    # 规则：均值 < 80 或 最低项 < 60
-    if avg_score < 80 or min_score < 60:
+    # --- 3️⃣ 专项优势型 ---
+    if any(v > 100 for v in valid_level2):
+        return "专项优势型"
+
+    # --- 4️⃣ 蓄力成长型 ---
+    if valid_level1 and all(v < 90 for v in valid_level1):
         return "蓄力成长型"
 
-    # 🧠 默认兜底
-    return "潜能倾向型"
+    # --- 兜底 ---
+    return "蓄力成长型"
 
 # app/services/template_service.py
 
