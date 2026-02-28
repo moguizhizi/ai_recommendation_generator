@@ -14,6 +14,7 @@ project_root/
 │   │   ├── chat_service.py        # AI 训练方案主流程编排（规则引擎 + LLM + 响应组装）
 │   │   ├── plan_rule_engine.py    # 🧩 训练方案规则引擎（用户类型判定 / 模块策略 / 难度规则）
 │   │   ├── task_processor.py      # 🧠 外部 taskinfo 的本地加工处理（清洗 / 过滤 / 结构转换）
+│   │   ├── modules_processor.py   # 🧩 训练模块拼装与加工（模块选取 / 排序 / 难度衔接 / 个性化推荐）
 │   │   ├── auth_service.py        # Key / Token 校验
 │   │   ├── rate_limit_service.py  # 限流 / 配额
 │   │   └── usage_service.py       # 计量 / 计费
