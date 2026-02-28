@@ -155,8 +155,8 @@ def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
     return f"每日1次，每次{durations[0]}-{durations[-1]}分钟"
 
 
-def generate_goal_by_llm(ability_name_cn: str) -> str:
+def generate_goal_by_llm(paradigm_tasks: Dict[str, List[Task]]) -> str:
     """
     调用大模型生成训练目标
     """
-    return f"强化{ability_name_cn}能力，提升整体认知灵活性与稳定性。"
+    return f""
