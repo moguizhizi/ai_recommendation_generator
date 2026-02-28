@@ -86,32 +86,38 @@ def calc_difficulty(task_info: Dict) -> str:
     return "当前能力层级+0.5~1级"
 
 
-def fetch_frequency(task_info: Dict, paradigm_tasks) -> str:
+def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
     """
-    本地接口：根据 task_info 中的训练时长，生成训练频次文案
+    本地接口：根据已匹配的任务列表，生成训练频次文案
 
     规则：
-    - 从 weekly_missed_task_infos 中提取 duration_min
-    - 按时长排序
-    - 组装为：每日1次，每次X-Y分钟 / 每次X分钟
+    - 从 paradigm_tasks 中提取所有 Task.duration_min
+    - 过滤无效 / 非正数时长
+    - 按时长升序排序
+    - 组装为：
+        - 1 个值 → 每日1次，每次 X 分钟
+        - 多个值 → 每日1次，每次 X-Y 分钟
+    - 若无有效时长 → 使用默认兜底文案
     """
 
-    missed_tasks = task_info.get("weekly_missed_task_infos", [])
+    durations: List[int] = []
 
-    durations: List[int] = [
-        t.get("duration_min")
-        for t in missed_tasks
-        if isinstance(t.get("duration_min"), (int, float)) and t.get("duration_min") > 0
-    ]
+    for tasks in paradigm_tasks.values():
+        for task in tasks:
+            if isinstance(task.duration_min, (int, float)) and task.duration_min > 0:
+                durations.append(int(task.duration_min))
 
+    # --- 无有效时长兜底 ---
     if not durations:
         return "每日1次，每次4-8分钟"
 
     durations.sort()
 
+    # --- 只有一个时长 ---
     if len(durations) == 1:
         return f"每日1次，每次{durations[0]}分钟"
 
+    # --- 多个时长，取区间 ---
     return f"每日1次，每次{durations[0]}-{durations[-1]}分钟"
 
 
