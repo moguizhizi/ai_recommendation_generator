@@ -7,6 +7,7 @@ from app.services.modules_processor import (
     calc_difficulty,
     fetch_frequency,
     generate_goal_by_llm,
+    get_missed_tasks_grouped_by_paradigm,
 )
 
 ABILITY_NAME_MAP = {
@@ -99,10 +100,11 @@ def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[Training
     # --- 5️⃣ 组装 TrainingItem ---
     def build_training_item(ability_key: str, score: int, suffix: str) -> TrainingItem:
         ability_name_cn = ABILITY_NAME_MAP.get(ability_key, ability_key)
+        paradigm_tasks = get_missed_tasks_grouped_by_paradigm(ability_key, task_info)
 
         return TrainingItem(
             name=f"{ability_name_cn}{suffix}",
-            tasks=fetch_tasks_by_ability(ability_key),
+            tasks=fetch_tasks_by_ability(paradigm_tasks),
             difficulty=calc_difficulty(ability_key, score),
             frequency=fetch_frequency(),
             goal=generate_goal_by_llm(ability_name_cn),

@@ -1,5 +1,6 @@
 from typing import Dict, List
 from collections import defaultdict
+import random
 
 
 def get_missed_tasks_grouped_by_paradigm(
@@ -46,6 +47,38 @@ def get_missed_tasks_grouped_by_paradigm(
             paradigm_tasks[paradigm].append(task_name)
 
     return dict(paradigm_tasks)
+
+
+def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[str]]) -> str:
+    """
+    将 paradigm_tasks 组装为展示字符串
+
+    规则：
+    1. 若存在有 paradigm 的项 → 随机选 1 个范式，最多 2 个 task，直接返回
+    2. 若不存在任何 paradigm → 使用 no_paradigm 组装返回（最多 2 个）
+    """
+
+    # --- 1️⃣ 收集所有有范式且有任务的 ---
+    valid_paradigms = [
+        (paradigm, tasks)
+        for paradigm, tasks in paradigm_tasks.items()
+        if paradigm != "no_paradigm" and tasks
+    ]
+
+    if valid_paradigms:
+        paradigm, tasks = random.choice(valid_paradigms)
+        picked_tasks = tasks[:2]
+        task_str = "、".join(picked_tasks)
+        return f"{paradigm}（{task_str}）"
+
+    # --- 2️⃣ 兜底：无范式 ---
+    no_paradigm_tasks = paradigm_tasks.get("no_paradigm", [])
+    if no_paradigm_tasks:
+        picked_tasks = no_paradigm_tasks[:2]
+        task_str = "、".join(picked_tasks)
+        return f"{task_str}等任务"
+
+    return ""
 
 
 def calc_difficulty(task_info: Dict) -> str:
