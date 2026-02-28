@@ -9,6 +9,19 @@ class UserType(str, Enum):
     GROWTH = "蓄力成长型"
 
 
+class ModuleName(str, Enum):
+    ADVANTAGE_EXPAND = "优势能力拓展模块"
+    BALANCED_TRAIN = "能力均衡训练模块"
+
+    POTENTIAL_EXPAND = "认知潜能拓展模块"
+
+    CORE_STRENGTHEN = "核心能力强化模块"
+    RELATED_ENHANCE = "关联能力提升训练模块"
+
+    BASIC_STABLE = "基础能力稳控模块"
+    STEP_UP = "阶梯式提升模块"
+
+
 class ScoreThreshold:
     ADVANTAGE_LINE = 100
     POTENTIAL_LINE = 90
