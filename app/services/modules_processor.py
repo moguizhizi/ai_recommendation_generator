@@ -42,7 +42,7 @@ def get_missed_tasks_grouped_by_paradigm(
     return dict(paradigm_tasks)
 
 
-def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[str]]) -> str:
+def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
     """
     将 paradigm_tasks 组装为展示字符串
 
@@ -61,15 +61,20 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[str]]) -> str:
     if valid_paradigms:
         paradigm, tasks = random.choice(valid_paradigms)
         picked_tasks = tasks[:2]
-        task_str = "、".join(picked_tasks)
-        return f"{paradigm}（{task_str}）"
+
+        task_names = [t.name for t in picked_tasks if t.name]
+        if task_names:
+            task_str = "、".join(task_names)
+            return f"{paradigm}（{task_str}）"
 
     # --- 2️⃣ 兜底：无范式 ---
     no_paradigm_tasks = paradigm_tasks.get("no_paradigm", [])
     if no_paradigm_tasks:
         picked_tasks = no_paradigm_tasks[:2]
-        task_str = "、".join(picked_tasks)
-        return f"{task_str}等任务"
+        task_names = [t.name for t in picked_tasks if t.name]
+        if task_names:
+            task_str = "、".join(task_names)
+            return f"{task_str}等任务"
 
     return ""
 
