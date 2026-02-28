@@ -1,6 +1,8 @@
 # app/services/task_processor.py
 from typing import Dict, List
 
+from app.schemas.common import Task
+
 
 def process_task_info(profile: dict, raw_task_info: dict) -> dict:
     """
@@ -43,7 +45,7 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
             }
 
     # --- 4️⃣ 处理 weekly_missed_tasks ---
-    missed_task_infos: List[Dict] = []
+    missed_task_infos: List[Task] = []
 
     for missed in profile.get("weekly_missed_tasks", []):
         task_id = missed.get("id")
@@ -53,16 +55,16 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
             continue
 
         missed_task_infos.append(
-            {
-                "id": task_id,
-                "name": raw_task.get("name"),
-                "difficulty": raw_task.get("difficulty"),
-                "life_desc": raw_task.get("life_desc"),  # 生活场景描述
-                "paradigm": raw_task.get("paradigm"),  # 范式
-                "duration_min": raw_task.get("duration_min"),  # 建议训练时长（分钟）
-                "level1_brain": raw_task.get("level1_brain"),  # 一级脑能力类别
-                "level2_brain": raw_task.get("level2_brain"),  # 二级脑能力类别
-            }
+            Task(
+                id=task_id,
+                name=raw_task.get("name"),
+                difficulty=raw_task.get("difficulty"),
+                life_desc=raw_task.get("life_desc"),
+                paradigm=raw_task.get("paradigm"),
+                duration_min=raw_task.get("duration_min"),
+                level1_brain=raw_task.get("level1_brain"),
+                level2_brain=raw_task.get("level2_brain"),
+            )
         )
 
     return {

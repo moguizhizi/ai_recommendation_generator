@@ -2,17 +2,19 @@ from typing import Dict, List
 from collections import defaultdict
 import random
 
+from app.schemas.common import Task
+
 
 def get_missed_tasks_grouped_by_paradigm(
     ability_key: str, task_info: Dict
-) -> Dict[str, List[str]]:
+) -> Dict[str, List[Task]]:
     """
-    本地接口：根据能力类型，从 task_info.weekly_missed_task_infos 中匹配训练范式（paradigm + task_name）
+    本地接口：根据能力类型，从 task_info.weekly_missed_task_infos 中匹配训练范式（paradigm + task）
 
     返回结构：
     {
-        "长度知觉任务": ["小马过河", "测距打鼠"],
-        "no_paradigm": ["任务A", "任务B"]
+        "长度知觉任务": [task1, task2],
+        "no_paradigm": [task1, task2]
     }
 
     规则：
@@ -21,30 +23,21 @@ def get_missed_tasks_grouped_by_paradigm(
     3. 无 paradigm 的 task 统一放入 no_paradigm
     """
 
-    missed_tasks = task_info.get("weekly_missed_task_infos", [])
+    missed_tasks: List[Task] = task_info.get("weekly_missed_task_infos", [])
 
-    # paradigm -> [task_name1, task_name2, ...]
-    paradigm_tasks: Dict[str, List[str]] = defaultdict(list)
+    paradigm_tasks: Dict[str, List[Task]] = defaultdict(list)
 
     for t in missed_tasks:
-        task_name = t.get("name")
-        paradigm = t.get("paradigm")
-
-        if not task_name:
+        if not t.name:
             continue
 
         # ability_key 匹配一级或二级脑能力
-        if (
-            t.get("level1_brain") != ability_key
-            and t.get("level2_brain") != ability_key
-        ):
+        if t.level1_brain != ability_key and ability_key not in (t.level2_brain or []):
             continue
 
         # 没有范式的统一归类
-        if not paradigm:
-            paradigm_tasks["no_paradigm"].append(task_name)
-        else:
-            paradigm_tasks[paradigm].append(task_name)
+        paradigm = t.paradigm or "no_paradigm"
+        paradigm_tasks[paradigm].append(t)
 
     return dict(paradigm_tasks)
 
