@@ -55,11 +55,33 @@ def calc_difficulty(ability_key: str, score: int) -> str:
     return "当前能力层级+0.5~1级"
 
 
-def fetch_frequency() -> str:
+def fetch_frequency(task_info: Dict) -> str:
     """
-    本地接口：获取训练频次
+    本地接口：根据 task_info 中的训练时长，生成训练频次文案
+
+    规则：
+    - 从 weekly_missed_task_infos 中提取 duration_min
+    - 按时长排序
+    - 组装为：每日1次，每次X-Y分钟 / 每次X分钟
     """
-    return "每日1次，每次4-8分钟"
+
+    missed_tasks = task_info.get("weekly_missed_task_infos", [])
+
+    durations: List[int] = [
+        t.get("duration_min")
+        for t in missed_tasks
+        if isinstance(t.get("duration_min"), (int, float)) and t.get("duration_min") > 0
+    ]
+
+    if not durations:
+        return "每日1次，每次4-8分钟"
+
+    durations.sort()
+
+    if len(durations) == 1:
+        return f"每日1次，每次{durations[0]}分钟"
+
+    return f"每日1次，每次{durations[0]}-{durations[-1]}分钟"
 
 
 def generate_goal_by_llm(ability_name_cn: str) -> str:
