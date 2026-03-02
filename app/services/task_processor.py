@@ -4,6 +4,38 @@ from typing import Dict, List
 from app.schemas.common import Task
 
 
+def build_level2_to_level1_map(task_info: Dict) -> Dict[str, str]:
+    """
+    根据 task_info 中的 tasks 构建 level2_brain -> level1_brain 映射
+
+    返回示例：
+    {
+        "记忆力-工作记忆": "记忆力",
+        "记忆力-空间记忆": "记忆力",
+    }
+    """
+
+    level2_to_level1: Dict[str, str] = {}
+
+    tasks = task_info.get("tasks", [])
+
+    for task in tasks:
+        level1 = task.get("level1_brain")
+        level2_raw = task.get("level2_brain")
+
+        if not level1 or not level2_raw:
+            continue
+
+        # 可能是： "记忆力-工作记忆,记忆力-空间记忆"
+        level2_list = [x.strip() for x in level2_raw.split(",") if x.strip()]
+
+        for level2 in level2_list:
+            # 如果存在冲突，可以选择忽略、覆盖、或报警
+            level2_to_level1[level2] = level1
+
+    return level2_to_level1
+
+
 def process_task_info(profile: dict, raw_task_info: dict) -> dict:
     """
     对外部任务数据做本地清洗与增强处理：
@@ -41,7 +73,6 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
                 "id": last_task_id,
                 "name": raw_task.get("name"),
                 "difficulty": raw_task.get("difficulty"),
-                "ability": raw_task.get("ability"),
             }
 
     # --- 4️⃣ 处理 weekly_missed_tasks ---
