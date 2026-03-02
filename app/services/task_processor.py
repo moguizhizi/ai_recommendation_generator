@@ -2,6 +2,7 @@
 from typing import Dict, List
 
 from app.schemas.common import Task
+from collections import defaultdict
 
 
 def build_level2_to_level1_map(task_info: Dict) -> Dict[str, str]:
@@ -39,67 +40,76 @@ def build_level2_to_level1_map(task_info: Dict) -> Dict[str, str]:
 def process_task_info(profile: dict, raw_task_info: dict) -> dict:
     """
     对外部任务数据做本地清洗与增强处理：
-    - 按能力分组 perception / exec / attention / memory
+
+    - 构建 task_index（id -> Task）
+    - 按一级脑能力分组 grouped_tasks（Task 对象）
+    - 按二级脑能力分组 level2_grouped_tasks（Task 对象）
     - 提取 last_task 的 difficulty
-    - 提取 weekly_missed_tasks 的 difficulty / life_desc / duration
-    - 提取一级脑能力 / 二级脑能力
+    - 提取 weekly_missed_task_infos（Task 对象）
     """
 
-    tasks = raw_task_info.get("tasks", [])
+    raw_tasks = raw_task_info.get("tasks", [])
 
-    # --- 1️⃣ 按能力分组 ---
-    grouped = {"perception": [], "exec": [], "attention": [], "memory": []}
+    # --- 1️⃣ 统一封装 Task 对象 ---
+    task_list: List[Task] = []
+    for t in raw_tasks:
+        task_list.append(
+            Task(
+                id=t.get("id"),
+                name=t.get("name"),
+                difficulty=t.get("difficulty"),
+                life_desc=t.get("life_desc"),
+                paradigm=t.get("paradigm"),
+                duration_min=t.get("duration_min"),
+                level1_brain=t.get("level1_brain"),
+                level2_brain=[
+                    x.strip()
+                    for x in (t.get("level2_brain") or "").split(",")
+                    if x.strip()
+                ],
+            )
+        )
 
-    # --- 2️⃣ 构建 task_id -> task_info 的索引 ---
-    task_index = {}
-    for t in tasks:
-        task_id = t.get("id")
-        if task_id:
-            task_index[task_id] = t
+    # --- 2️⃣ 建立 task_index ---
+    task_index: Dict[int, Task] = {t.id: t for t in task_list if t.id is not None}
 
-        ability = t.get("ability")
-        if ability in grouped:
-            grouped[ability].append(t)
+    # --- 3️⃣ 按 level1 / level2 分组 ---
+    level1_grouped_tasks: Dict[str, List[Task]] = defaultdict(list)
+    level2_grouped_tasks: Dict[str, List[Task]] = defaultdict(list)
 
-    # --- 3️⃣ 处理 last_task ---
+    for task in task_list:
+        if task.level1_brain:
+            level1_grouped_tasks[task.level1_brain].append(task)
+
+        for level2 in task.level2_brain:
+            level2_grouped_tasks[level2].append(task)
+
+    # --- 4️⃣ 处理 last_task ---
     last_task_info = None
     last_task = profile.get("last_task")
     if last_task:
         last_task_id = last_task.get("id")
-        raw_task = task_index.get(last_task_id)
+        task_obj = task_index.get(last_task_id)
 
-        if raw_task:
+        if task_obj:
             last_task_info = {
-                "id": last_task_id,
-                "name": raw_task.get("name"),
-                "difficulty": raw_task.get("difficulty"),
+                "id": task_obj.id,
+                "name": task_obj.name,
+                "difficulty": task_obj.difficulty,
             }
 
-    # --- 4️⃣ 处理 weekly_missed_tasks ---
+    # --- 5️⃣ 处理 weekly_missed_tasks ---
     missed_task_infos: List[Task] = []
 
     for missed in profile.get("weekly_missed_tasks", []):
         task_id = missed.get("id")
-        raw_task = task_index.get(task_id)
-
-        if not raw_task:
-            continue
-
-        missed_task_infos.append(
-            Task(
-                id=task_id,
-                name=raw_task.get("name"),
-                difficulty=raw_task.get("difficulty"),
-                life_desc=raw_task.get("life_desc"),
-                paradigm=raw_task.get("paradigm"),
-                duration_min=raw_task.get("duration_min"),
-                level1_brain=raw_task.get("level1_brain"),
-                level2_brain=raw_task.get("level2_brain"),
-            )
-        )
+        task_obj = task_index.get(task_id)
+        if task_obj:
+            missed_task_infos.append(task_obj)
 
     return {
-        "grouped_tasks": grouped,
+        "level1_grouped_tasks": dict(level1_grouped_tasks),  # Dict[str, List[Task]]
+        "level2_grouped_tasks": dict(level2_grouped_tasks),  # Dict[str, List[Task]]
         "last_task_info": last_task_info,
-        "weekly_missed_task_infos": missed_task_infos,
+        "weekly_missed_task_infos": missed_task_infos,  # List[Task]
     }
