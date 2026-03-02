@@ -164,17 +164,16 @@ def build_user_modules_by_threshold(
     threshold: int,
 ) -> List[TrainingModule]:
     """
-    通用构建用户训练模块结构（基于 enrich_user_profile_with_tasks 之后的 profile）
+    通用构建用户训练模块结构（基于 enrich_user_profile_with_tasks + enrich_profile_with_user_type 之后的 profile）
 
-    入参 enriched_profile 结构要求：
+    enriched_profile 结构示例：
     {
         "level1_scores": Dict[str, int],
         "last_task_info": Task | None,
         "weekly_missed_task_infos": List[Task],
+        "user_type": UserType,
         ...
     }
-
-    - threshold: 分数阈值（潜能 / 优势）
     """
 
     level1_scores: Dict[str, int] = enriched_profile.get("level1_scores", {})
@@ -182,6 +181,7 @@ def build_user_modules_by_threshold(
         "weekly_missed_task_infos", []
     )
     last_task: Task | None = enriched_profile.get("last_task_info")
+    user_type: UserType = enriched_profile.get("user_type", UserType.GROWTH)
 
     # --- 1️⃣ 过滤 >= threshold 的能力 ---
     qualified = [
@@ -203,7 +203,6 @@ def build_user_modules_by_threshold(
     def build_training_item(ability_key: str, score: int, suffix: str) -> TrainingItem:
         ability_name_cn = ABILITY_NAME_MAP.get(ability_key, ability_key)
 
-        # 基于 enrich 后的 weekly_missed_task_infos 分组
         paradigm_tasks = get_missed_tasks_grouped_by_paradigm(
             ability_key, weekly_missed_task_infos
         )
@@ -225,10 +224,25 @@ def build_user_modules_by_threshold(
         build_training_item(a, level1_scores[a], "巩固训练") for a in balanced
     ]
 
-    # --- 6️⃣ 返回模块结构 ---
+    # --- 6️⃣ 根据用户类型动态选择模块名 ---
+    module_names = USER_TYPE_MODULE_MAP.get(
+        user_type, USER_TYPE_MODULE_MAP[UserType.GROWTH]
+    )
+
+    module_items_map = {
+        ModuleName.ADVANTAGE_EXPAND: advantage_items,
+        ModuleName.POTENTIAL_EXPAND: advantage_items,
+        ModuleName.CORE_STRENGTHEN: advantage_items,
+        ModuleName.BASIC_STABLE: advantage_items,
+
+        ModuleName.BALANCED_TRAIN: balanced_items,
+        ModuleName.RELATED_ENHANCE: balanced_items,
+        ModuleName.STEP_UP: balanced_items,
+    }
+
     return [
-        TrainingModule(module_name=ModuleName.ADVANTAGE_EXPAND, items=advantage_items),
-        TrainingModule(module_name=ModuleName.BALANCED_TRAIN, items=balanced_items),
+        TrainingModule(module_name=module_name, items=module_items_map.get(module_name, []))
+        for module_name in module_names
     ]
 
 
