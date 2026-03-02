@@ -339,18 +339,24 @@ def build_potential_user_modules(enriched_profile: dict) -> List[TrainingModule]
     )
 
 
-# def build_recommended_modules(user_type: str, profile: dict):
-#     for module in USER_TYPE_MODULE_MAP[user_type]:
-#         module_name = module
+def build_special_user_modules(enriched_profile: dict) -> List[TrainingModule]:
+    """
+    构建【专项优势型】用户的训练模块结构
+    """
+    return build_user_modules_by_threshold(
+        enriched_profile=enriched_profile,
+        threshold=ScoreThreshold.ADVANTAGE_LINE,
+    )
 
 
-#         class TrainingItem(BaseModel):
-#         name: str = Field(..., title="训练项名称", description="如：感知觉进阶训练、注意力巩固训练")
-#         tasks: List[str] = Field(..., title="具体训练任务列表", description="该训练项包含的具体游戏/任务名称")
-#         difficulty: str = Field(..., title="训练难度", description="如：当前能力层级+0.5~1级")
-#         frequency: str = Field(..., title="训练频次", description="如：每日1次，每次4-8分钟")
-#         goal: str = Field(..., title="训练目标", description="该训练项期望达到的能力提升目标")
-#         description: Optional[str] = Field(None, title="模块说明", description="可选说明，如：低压力、高成功体验")
+def build_growth_user_modules(enriched_profile: dict) -> List[TrainingModule]:
+    """
+    构建【蓄力成长型】用户的训练模块结构
+    """
+    return build_user_modules_by_threshold(
+        enriched_profile=enriched_profile,
+        threshold=ScoreThreshold.POTENTIAL_LINE,
+    )
 
 
 def get_fixed_templates(profile: dict) -> dict:
