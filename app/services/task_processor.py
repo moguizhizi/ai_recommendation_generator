@@ -37,20 +37,12 @@ def build_level2_to_level1_map(task_info: Dict) -> Dict[str, str]:
     return level2_to_level1
 
 
-def process_task_info(profile: dict, raw_task_info: dict) -> dict:
+def build_task_repository(raw_task_info: dict) -> dict:
     """
-    对外部任务数据做本地清洗与增强处理：
-
-    - 构建 task_index（id -> Task）
-    - 按一级脑能力分组 grouped_tasks（Task 对象）
-    - 按二级脑能力分组 level2_grouped_tasks（Task 对象）
-    - 提取 last_task 的 difficulty
-    - 提取 weekly_missed_task_infos（Task 对象）
+    构建系统级 Task 仓库（与用户无关）
     """
-
     raw_tasks = raw_task_info.get("tasks", [])
 
-    # --- 1️⃣ 统一封装 Task 对象 ---
     task_list: List[Task] = []
     for t in raw_tasks:
         task_list.append(
@@ -70,27 +62,38 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
             )
         )
 
-    # --- 2️⃣ 建立 task_index ---
-    task_index: Dict[int, Task] = {t.id: t for t in task_list if t.id is not None}
+    task_index = {t.id: t for t in task_list if t.id is not None}
 
-    # --- 3️⃣ 按 level1 / level2 分组 ---
-    level1_grouped_tasks: Dict[str, List[Task]] = defaultdict(list)
-    level2_grouped_tasks: Dict[str, List[Task]] = defaultdict(list)
+    level1_grouped = defaultdict(list)
+    level2_grouped = defaultdict(list)
 
     for task in task_list:
         if task.level1_brain:
-            level1_grouped_tasks[task.level1_brain].append(task)
+            level1_grouped[task.level1_brain].append(task)
 
         for level2 in task.level2_brain:
-            level2_grouped_tasks[level2].append(task)
+            level2_grouped[level2].append(task)
 
-    # --- 4️⃣ 处理 last_task ---
+    return {
+        "task_list": task_list,
+        "task_index": task_index,
+        "level1_grouped_tasks": dict(level1_grouped),
+        "level2_grouped_tasks": dict(level2_grouped),
+    }
+
+
+def process_user_task_info(profile: dict, task_repo: dict) -> dict:
+    """
+    处理用户个人任务相关信息
+    """
+
+    task_index: Dict[int, Task] = task_repo["task_index"]
+
+    # --- last_task ---
     last_task_info = None
     last_task = profile.get("last_task")
     if last_task:
-        last_task_id = last_task.get("id")
-        task_obj = task_index.get(last_task_id)
-
+        task_obj = task_index.get(last_task.get("id"))
         if task_obj:
             last_task_info = {
                 "id": task_obj.id,
@@ -98,18 +101,14 @@ def process_task_info(profile: dict, raw_task_info: dict) -> dict:
                 "difficulty": task_obj.difficulty,
             }
 
-    # --- 5️⃣ 处理 weekly_missed_tasks ---
+    # --- weekly_missed_tasks ---
     missed_task_infos: List[Task] = []
-
     for missed in profile.get("weekly_missed_tasks", []):
-        task_id = missed.get("id")
-        task_obj = task_index.get(task_id)
+        task_obj = task_index.get(missed.get("id"))
         if task_obj:
             missed_task_infos.append(task_obj)
 
     return {
-        "level1_grouped_tasks": dict(level1_grouped_tasks),  # Dict[str, List[Task]]
-        "level2_grouped_tasks": dict(level2_grouped_tasks),  # Dict[str, List[Task]]
         "last_task_info": last_task_info,
-        "weekly_missed_task_infos": missed_task_infos,  # List[Task]
+        "weekly_missed_task_infos": missed_task_infos,
     }
