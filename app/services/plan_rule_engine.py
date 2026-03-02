@@ -76,7 +76,6 @@ def calc_user_type(profile: dict) -> str:
     return UserType.GROWTH.value
 
 
-
 def build_user_modules_by_threshold(
     level1_scores: Dict[str, int],
     threshold: int,
@@ -130,6 +129,7 @@ def build_user_modules_by_threshold(
         TrainingModule(module_name=ModuleName.BALANCED_TRAIN, items=balanced_items),
     ]
 
+
 def build_potential_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
     """
     构建【潜能倾向型】用户的训练模块结构
@@ -166,7 +166,7 @@ def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[Training
 
 def get_fixed_templates(user_type: str) -> dict:
     templates = {
-        "优势倾向型": {
+        UserType.ADVANTAGE.value: {
             "overview": (
                 "为了让训练更高效、更贴合孩子的成长节奏，我们结合本阶段的认知训练数据与优势倾向，"
                 "为孩子生成了专属的 AI 训练方案。这份方案精准匹配宝贝的能力发展节奏，能更有针对性地助力孩子提升认知能力。"
@@ -186,7 +186,7 @@ def get_fixed_templates(user_type: str) -> dict:
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
         },
-        "潜能倾向型": {
+        UserType.POTENTIAL.value: {
             "overview": (
                 "为保障认知训练的高效性与适配性，贴合孩子的个性化成长节奏，我们依托本阶段训练数据，"
                 "结合孩子的认知潜能倾向，为其定制专属 AI 训练方案。方案精准匹配宝贝的认知发展节奏，"
@@ -206,7 +206,7 @@ def get_fixed_templates(user_type: str) -> dict:
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
         },
-        "专项优势型": {
+        UserType.SPECIAL.value: {
             "overview": (
                 "本方案结合孩子本阶段训练数据与专项优势特征制定。通过优势能力深化、巩固基础能力，"
                 "将实验室得分转化为临床功能改善，最终提升孩子的生活能力表现。建议您详细阅读。"
@@ -224,7 +224,7 @@ def get_fixed_templates(user_type: str) -> dict:
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
         },
-        "蓄力成长型": {
+        UserType.GROWTH.value: {
             "overview": (
                 "为了帮助孩子扭转能力波动下降的趋势，我们结合本阶段训练数据与能力现状，为孩子生成了专属的 AI 训练方案。"
                 "方案以稳定能力、巩固基础、逐步提升为核心，帮助孩子重拾训练信心，稳步提升认知能力。"
@@ -245,4 +245,4 @@ def get_fixed_templates(user_type: str) -> dict:
         },
     }
 
-    return templates.get(user_type, templates["潜能倾向型"])
+    return templates.get(user_type, templates[UserType.GROWTH.value])
