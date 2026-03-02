@@ -76,16 +76,21 @@ def calc_user_type(profile: dict) -> str:
     return UserType.GROWTH.value
 
 
-def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
+
+def build_user_modules_by_threshold(
+    level1_scores: Dict[str, int],
+    threshold: int,
+) -> List[TrainingModule]:
     """
-    构建【优势倾向型】用户的训练模块结构
+    通用构建用户训练模块结构
+    - threshold: 分数阈值（潜能 / 优势）
     """
 
-    # --- 1️⃣ 过滤 >= 100 的能力 ---
+    # --- 1️⃣ 过滤 >= threshold 的能力 ---
     qualified = [
         (ability, score)
         for ability, score in level1_scores.items()
-        if score >= ScoreThreshold.ADVANTAGE_LINE
+        if score >= threshold
     ]
 
     # --- 2️⃣ 按分数降序排序 ---
@@ -106,7 +111,7 @@ def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[Training
             name=f"{ability_name_cn}{suffix}",
             tasks=fetch_tasks_by_ability(paradigm_tasks),
             difficulty=calc_difficulty(ability_key, score),
-            frequency=fetch_frequency(),
+            frequency=fetch_frequency(paradigm_tasks),
             goal=generate_goal_by_llm(ability_name_cn),
             description="低压力、高成功体验",
         )
@@ -124,6 +129,25 @@ def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[Training
         TrainingModule(module_name=ModuleName.ADVANTAGE_EXPAND, items=advantage_items),
         TrainingModule(module_name=ModuleName.BALANCED_TRAIN, items=balanced_items),
     ]
+
+def build_potential_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
+    """
+    构建【潜能倾向型】用户的训练模块结构
+    """
+    return build_user_modules_by_threshold(
+        level1_scores=level1_scores,
+        threshold=ScoreThreshold.POTENTIAL_LINE,
+    )
+
+
+def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
+    """
+    构建【优势倾向型】用户的训练模块结构
+    """
+    return build_user_modules_by_threshold(
+        level1_scores=level1_scores,
+        threshold=ScoreThreshold.ADVANTAGE_LINE,
+    )
 
 
 # def build_recommended_modules(user_type: str, profile: dict):
