@@ -81,33 +81,37 @@ def build_task_repository(raw_task_info: dict) -> dict:
     }
 
 
-def process_user_task_info(profile: dict, task_repo: dict) -> dict:
+def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
     """
-    处理用户个人任务相关信息
+    将 profile 中的 last_task / weekly_missed_tasks 替换为增强后的 Task 视图：
+    - last_task_info: Task | None
+    - weekly_missed_task_infos: List[Task]
     """
 
     task_index: Dict[int, Task] = task_repo["task_index"]
 
-    # --- last_task ---
+    enriched_profile = dict(profile)  # 浅拷贝，避免修改原始 profile
+
+    # --- last_task -> last_task_info (直接包含 Task 对象) ---
     last_task_info = None
     last_task = profile.get("last_task")
     if last_task:
         task_obj = task_index.get(last_task.get("id"))
         if task_obj:
-            last_task_info = {
-                "id": task_obj.id,
-                "name": task_obj.name,
-                "difficulty": task_obj.difficulty,
-            }
+            last_task_info = task_obj
 
-    # --- weekly_missed_tasks ---
+    # --- weekly_missed_tasks -> weekly_missed_task_infos ---
     missed_task_infos: List[Task] = []
     for missed in profile.get("weekly_missed_tasks", []):
         task_obj = task_index.get(missed.get("id"))
         if task_obj:
             missed_task_infos.append(task_obj)
 
-    return {
-        "last_task_info": last_task_info,
-        "weekly_missed_task_infos": missed_task_infos,
-    }
+    # --- 替换字段 ---
+    enriched_profile.pop("last_task", None)
+    enriched_profile.pop("weekly_missed_tasks", None)
+
+    enriched_profile["last_task_info"] = last_task_info
+    enriched_profile["weekly_missed_task_infos"] = missed_task_infos
+
+    return enriched_profile
