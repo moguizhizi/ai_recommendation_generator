@@ -5,9 +5,9 @@ from app.schemas.common import Task
 from collections import defaultdict
 
 
-def build_level2_to_level1_map(task_info: Dict) -> Dict[str, str]:
+def build_level2_to_level1_map(task_repo: Dict) -> Dict[str, str]:
     """
-    根据 task_info 中的 tasks 构建 level2_brain -> level1_brain 映射
+    根据 task_repo 构建 level2_brain -> level1_brain 映射
 
     返回示例：
     {
@@ -18,21 +18,20 @@ def build_level2_to_level1_map(task_info: Dict) -> Dict[str, str]:
 
     level2_to_level1: Dict[str, str] = {}
 
-    tasks = task_info.get("tasks", [])
+    # task_repo 中已经是 Task 对象了
+    task_list = task_repo.get("task_list", [])
 
-    for task in tasks:
-        level1 = task.get("level1_brain")
-        level2_raw = task.get("level2_brain")
+    for task in task_list:
+        level1 = task.level1_brain
+        level2_list = task.level2_brain  # 已经是 List[str]
 
-        if not level1 or not level2_raw:
+        if not level1 or not level2_list:
             continue
 
-        # 可能是： "记忆力-工作记忆,记忆力-空间记忆"
-        level2_list = [x.strip() for x in level2_raw.split(",") if x.strip()]
-
         for level2 in level2_list:
-            # 如果存在冲突，可以选择忽略、覆盖、或报警
-            level2_to_level1[level2] = level1
+
+            if level2 not in level2_to_level1:
+                level2_to_level1[level2] = level1
 
     return level2_to_level1
 
