@@ -6,40 +6,34 @@ from app.schemas.common import Task
 
 
 def get_missed_tasks_grouped_by_paradigm(
-    ability_key: str, task_info: Dict
+    level1_key: str,
+    weekly_missed_task_infos: List[Task],
+    level2_keys: List[str] | None = None,
 ) -> Dict[str, List[Task]]:
     """
-    本地接口：根据能力类型，从 task_info.weekly_missed_task_infos 中匹配训练范式（paradigm + task）
-
-    返回结构：
-    {
-        "长度知觉任务": [task1, task2],
-        "no_paradigm": [task1, task2]
-    }
-
-    规则：
-    1. ability_key 匹配 level1_brain 或 level2_brain
-    2. 按 paradigm 分组
-    3. 无 paradigm 的 task 统一放入 no_paradigm
+    按范式分组漏训任务
+    - level1_key: 一级脑能力 key
+    - level2_keys: 可选，限定二级脑能力（SPECIAL / GROWTH 使用）
     """
 
-    missed_tasks: List[Task] = task_info.get("weekly_missed_task_infos", [])
+    filtered_tasks: List[Task] = []
 
-    paradigm_tasks: Dict[str, List[Task]] = defaultdict(list)
-
-    for t in missed_tasks:
-        if not t.name:
+    for task in weekly_missed_task_infos:
+        if task.level1_brain != level1_key:
             continue
 
-        # ability_key 匹配一级或二级脑能力
-        if t.level1_brain != ability_key and ability_key not in (t.level2_brain or []):
-            continue
+        if level2_keys:
+            # task.level2_brain: List[str]
+            if not set(task.level2_brain) & set(level2_keys):
+                continue
 
-        # 没有范式的统一归类
-        paradigm = t.paradigm or "no_paradigm"
-        paradigm_tasks[paradigm].append(t)
+        filtered_tasks.append(task)
 
-    return dict(paradigm_tasks)
+    grouped = defaultdict(list)
+    for task in filtered_tasks:
+        grouped[task.paradigm].append(task)
+
+    return dict(grouped)
 
 
 def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
