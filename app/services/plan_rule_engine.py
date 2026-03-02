@@ -234,35 +234,34 @@ def build_user_modules_by_threshold(
         ModuleName.POTENTIAL_EXPAND: advantage_items,
         ModuleName.CORE_STRENGTHEN: advantage_items,
         ModuleName.BASIC_STABLE: advantage_items,
-
         ModuleName.BALANCED_TRAIN: balanced_items,
         ModuleName.RELATED_ENHANCE: balanced_items,
         ModuleName.STEP_UP: balanced_items,
     }
 
     return [
-        TrainingModule(module_name=module_name, items=module_items_map.get(module_name, []))
+        TrainingModule(
+            module_name=module_name, items=module_items_map.get(module_name, [])
+        )
         for module_name in module_names
     ]
 
-
-def build_potential_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
-    """
-    构建【潜能倾向型】用户的训练模块结构
-    """
-    return build_user_modules_by_threshold(
-        level1_scores=level1_scores,
-        threshold=ScoreThreshold.POTENTIAL_LINE,
-    )
-
-
-def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[TrainingModule]:
+def build_advantage_user_modules(enriched_profile: dict) -> List[TrainingModule]:
     """
     构建【优势倾向型】用户的训练模块结构
     """
     return build_user_modules_by_threshold(
-        level1_scores=level1_scores,
+        enriched_profile=enriched_profile,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
+    )
+
+def build_potential_user_modules(enriched_profile: dict) -> List[TrainingModule]:
+    """
+    构建【潜能倾向型】用户的训练模块结构
+    """
+    return build_user_modules_by_threshold(
+        enriched_profile=enriched_profile,
+        threshold=ScoreThreshold.POTENTIAL_LINE,
     )
 
 
