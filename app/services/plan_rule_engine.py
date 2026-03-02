@@ -2,6 +2,7 @@
 from app.core.constants import ModuleName, UserType, ScoreThreshold
 from typing import Dict, List
 from app.schemas.chat import TrainingItem, TrainingModule
+from app.schemas.common import Task
 from app.services.modules_processor import (
     fetch_tasks_by_ability,
     calc_difficulty,
@@ -38,52 +39,149 @@ USER_TYPE_MODULE_MAP = {
 }
 
 
-def calc_user_type(profile: dict) -> str:
+def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
     """
+    基于原始 profile + 任务仓库 task_repo，对用户画像做一次「任务视图增强」：
+
+    ✅ 输入 profile（原始结构示例）：
+    {
+        "train_days": 10,
+        "disease_tag": "...",
+        "level1_scores": {...},
+        "level2_scores": {...},
+        "last_task": {"id": 1, "name": "小马过河"},                 # 仅有轻量信息
+        "weekly_missed_tasks": [{"id": 2, "name": "小马过河"}, ...] # 仅有轻量信息
+    }
+
+    ✅ 输出 enriched_profile（增强后结构）：
+    {
+        "train_days": 10,
+        "disease_tag": "...",
+        "level1_scores": {...},
+        "level2_scores": {...},
+
+        # 🚀 替换为完整 Task 视图
+        "last_task_info": Task | None,              # 最近一次训练任务（完整 Task 对象）
+        "weekly_missed_task_infos": List[Task],     # 过去一周漏训任务（完整 Task 对象列表）
+    }
+
+    设计目标：
+    - profile 中不再保留 last_task / weekly_missed_tasks（轻量 id 结构）
+    - 统一对外暴露 Task 对象，方便后续做难度、频次、范式等业务逻辑处理
+    - 保证 profile 结构「干净、单一事实来源」
+    """
+
+    task_index: Dict[int, Task] = task_repo["task_index"]
+
+    # 浅拷贝一份 profile，避免污染原始入参（上游数据源可能复用 profile）
+    enriched_profile = dict(profile)
+
+    # --- 1️⃣ last_task -> last_task_info（直接升级为 Task 对象） ---
+    last_task_info = None
+    last_task = profile.get("last_task")
+    if last_task:
+        task_obj = task_index.get(last_task.get("id"))
+        if task_obj:
+            last_task_info = task_obj
+
+    # --- 2️⃣ weekly_missed_tasks -> weekly_missed_task_infos（升级为 Task 列表） ---
+    missed_task_infos: List[Task] = []
+    for missed in profile.get("weekly_missed_tasks", []):
+        task_obj = task_index.get(missed.get("id"))
+        if task_obj:
+            missed_task_infos.append(task_obj)
+
+    # --- 3️⃣ 清理旧字段（避免新旧结构并存导致歧义） ---
+    # 旧字段：
+    #   - last_task: {"id": 1, "name": "..."}
+    #   - weekly_missed_tasks: [{"id": 1, "name": "..."}, ...]
+    enriched_profile.pop("last_task", None)
+    enriched_profile.pop("weekly_missed_tasks", None)
+
+    # --- 4️⃣ 写入增强后的字段 ---
+    enriched_profile["last_task_info"] = last_task_info
+    enriched_profile["weekly_missed_task_infos"] = missed_task_infos
+
+    return enriched_profile
+
+
+def enrich_profile_with_user_type(profile: dict) -> dict:
+    """
+    给用户画像 profile 打上 user_type 标签（写回 profile 并返回）
+
     判定顺序：
-    1. 优势倾向型：任意一级脑能力 ≥ 100
-    2. 潜能倾向型：任意一级脑能力 ∈ [90, 100)
-    3. 专项优势型：任意二级脑能力 > 100
-    4. 蓄力成长型：所有一级脑能力 < 90
+    1. 优势倾向型：任意一级脑能力 ≥ ADVANTAGE_LINE
+    2. 潜能倾向型：任意一级脑能力 ∈ [POTENTIAL_LINE, ADVANTAGE_LINE)
+    3. 专项优势型：任意二级脑能力 > ADVANTAGE_LINE
+    4. 蓄力成长型：所有一级脑能力 < POTENTIAL_LINE
+
+    返回 enriched_profile 结构示例：
+    {
+        "level1_scores": {...},
+        "level2_scores": {...},
+        "last_task_info": Task | None,
+        "weekly_missed_task_infos": List[Task],
+        "user_type": UserType,
+        ...
+    }
     """
 
     level1_scores = profile.get("level1_scores", {})
     level2_scores = profile.get("level2_scores", {})
 
-    level1_values = [v for v in level1_scores.values() if v > 0]
+    level1_values = [v for v in level1_scores.values() if isinstance(v, (int, float))]
+
+    # 默认值
+    user_type = UserType.GROWTH
 
     # 1️⃣ 优势倾向型
     if any(v >= ScoreThreshold.ADVANTAGE_LINE for v in level1_values):
-        return UserType.ADVANTAGE.value
+        user_type = UserType.ADVANTAGE
 
     # 2️⃣ 潜能倾向型
-    if any(
+    elif any(
         ScoreThreshold.POTENTIAL_LINE <= v < ScoreThreshold.ADVANTAGE_LINE
         for v in level1_values
     ):
-        return UserType.POTENTIAL.value
+        user_type = UserType.POTENTIAL
 
     # 3️⃣ 专项优势型（二级能力存在明显优势）
-    for _, sub_scores in level2_scores.items():
-        for v in sub_scores.values():
-            if v > ScoreThreshold.ADVANTAGE_LINE:
-                return UserType.SPECIAL.value
+    else:
+        for _, sub_scores in level2_scores.items():
+            for v in sub_scores.values():
+                if isinstance(v, (int, float)) and v > ScoreThreshold.ADVANTAGE_LINE:
+                    user_type = UserType.SPECIAL
+                    break
 
-    # 4️⃣ 蓄力成长型
-    if level1_values and all(v < ScoreThreshold.POTENTIAL_LINE for v in level1_values):
-        return UserType.GROWTH.value
+    enriched_profile = dict(profile)  # 浅拷贝，避免污染原对象
+    enriched_profile["user_type"] = user_type
 
-    return UserType.GROWTH.value
+    return enriched_profile
 
 
 def build_user_modules_by_threshold(
-    level1_scores: Dict[str, int],
+    enriched_profile: dict,
     threshold: int,
 ) -> List[TrainingModule]:
     """
-    通用构建用户训练模块结构
+    通用构建用户训练模块结构（基于 enrich_user_profile_with_tasks 之后的 profile）
+
+    入参 enriched_profile 结构要求：
+    {
+        "level1_scores": Dict[str, int],
+        "last_task_info": Task | None,
+        "weekly_missed_task_infos": List[Task],
+        ...
+    }
+
     - threshold: 分数阈值（潜能 / 优势）
     """
+
+    level1_scores: Dict[str, int] = enriched_profile.get("level1_scores", {})
+    weekly_missed_task_infos: List[Task] = enriched_profile.get(
+        "weekly_missed_task_infos", []
+    )
+    last_task: Task | None = enriched_profile.get("last_task_info")
 
     # --- 1️⃣ 过滤 >= threshold 的能力 ---
     qualified = [
@@ -104,12 +202,16 @@ def build_user_modules_by_threshold(
     # --- 5️⃣ 组装 TrainingItem ---
     def build_training_item(ability_key: str, score: int, suffix: str) -> TrainingItem:
         ability_name_cn = ABILITY_NAME_MAP.get(ability_key, ability_key)
-        paradigm_tasks = get_missed_tasks_grouped_by_paradigm(ability_key, task_info)
+
+        # 基于 enrich 后的 weekly_missed_task_infos 分组
+        paradigm_tasks = get_missed_tasks_grouped_by_paradigm(
+            ability_key, weekly_missed_task_infos
+        )
 
         return TrainingItem(
             name=f"{ability_name_cn}{suffix}",
             tasks=fetch_tasks_by_ability(paradigm_tasks),
-            difficulty=calc_difficulty(ability_key, score),
+            difficulty=calc_difficulty(last_task, paradigm_tasks),
             frequency=fetch_frequency(paradigm_tasks),
             goal=generate_goal_by_llm(ability_name_cn),
             description="低压力、高成功体验",
@@ -164,7 +266,7 @@ def build_advantage_user_modules(level1_scores: Dict[str, int]) -> List[Training
 #         description: Optional[str] = Field(None, title="模块说明", description="可选说明，如：低压力、高成功体验")
 
 
-def get_fixed_templates(user_type: str) -> dict:
+def get_fixed_templates(profile: dict) -> dict:
     templates = {
         UserType.ADVANTAGE.value: {
             "overview": (
@@ -245,4 +347,4 @@ def get_fixed_templates(user_type: str) -> dict:
         },
     }
 
-    return templates.get(user_type, templates[UserType.GROWTH.value])
+    return templates.get(profile["user_type"], templates[UserType.GROWTH.value])
