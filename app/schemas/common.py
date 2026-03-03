@@ -1,7 +1,5 @@
-# app/schemas/common.py
-from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
-
+from typing import Optional, List
 
 class Task(BaseModel):
     id: str = Field(..., title="任务ID")
@@ -14,6 +12,14 @@ class Task(BaseModel):
 
     level1_brain: Optional[str] = Field(None, title="一级脑能力")
     level2_brain: List[str] = Field(default_factory=list, title="二级脑能力列表")
+
+    # 自动把 int 转成 str
+    @field_validator("id", mode="before")
+    @classmethod
+    def normalize_id(cls, v):
+        if v is None:
+            raise ValueError("id 不能为空")
+        return str(v)
 
     @field_validator("level2_brain", mode="before")
     @classmethod
