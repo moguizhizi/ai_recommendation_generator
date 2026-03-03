@@ -18,6 +18,10 @@ project_root/
 │   │   ├── auth_service.py        # Key / Token 校验
 │   │   ├── rate_limit_service.py  # 限流 / 配额
 │   │   └── usage_service.py       # 计量 / 计费
+│   ├── prompts/                   # 📝 Prompt 层（极简版）
+│   │   ├── __init__.py
+│   │   ├── base_prompt.py         # Prompt 基类
+│   │   └── plan_prompt.py         # 训练方案 Prompt
 │   │
 │   ├── clients/                   # 🔌 外部服务依赖（你调别人）
 │   │   ├── payment_client.py      # 支付 / 账单服务客户端
