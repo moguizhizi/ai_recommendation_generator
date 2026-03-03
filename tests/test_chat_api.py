@@ -1,101 +1,90 @@
 # test_chat_api.py
 
 import time
-from configs.loader import load_config
-from llm.api_llm import ApiLLM
 
+from configs.loader import load_config
+from llm.api_llm import ApiLLM, LLMError
 from app.core.logging import setup_logging, get_logger
 
 # 初始化日志
 setup_logging()
-
 logger = get_logger(__name__)
 
 
-def create_llm_from_config(config: dict):
+def create_llm_from_config(config: dict) -> ApiLLM:
     llm_config = config["llm"]
     runtime_config = config.get("runtime", {})
 
     timeout = runtime_config.get("timeout", 60)
+    max_retries = runtime_config.get("max_retries", 3)
 
-    logger.info(f"Initializing LLM, type={llm_config['type']}")
+    logger.info(f"Initializing LLM | type={llm_config['type']}")
 
     if llm_config["type"] == "api":
         api_cfg = llm_config["api"]
 
-        logger.debug(
-            f"Using API model={api_cfg['model']} base_url={api_cfg['base_url']}"
-        )
+        logger.debug(f"API model={api_cfg['model']} " f"base_url={api_cfg['base_url']}")
 
         return ApiLLM(
             base_url=api_cfg["base_url"],
             model=api_cfg["model"],
             api_key=api_cfg.get("api_key"),
             timeout=timeout,
+            max_retries=max_retries,
         )
 
     elif llm_config["type"] == "local":
         local_cfg = llm_config["local"]
 
-        logger.debug(
-            f"Using local model server at {local_cfg['base_url']}"
-        )
+        logger.debug(f"Local model server at {local_cfg['base_url']}")
 
         return ApiLLM(
             base_url=local_cfg["base_url"],
             model="local-model",
-            api_key=None,
             timeout=timeout,
+            max_retries=max_retries,
         )
 
     else:
-        logger.error(f"Unsupported llm type: {llm_config['type']}")
         raise ValueError(f"Unsupported llm type: {llm_config['type']}")
+
+
+def run_once(llm: ApiLLM, prompt: str) -> str:
+    start_time = time.time()
+    response = llm.chat(prompt)
+    duration = time.time() - start_time
+
+    logger.info(f"LLM request finished | time_cost={duration:.3f}s")
+    logger.debug(f"Response: {response}")
+
+    return response
 
 
 def main():
     logger.info("==== Test Chat API Started ====")
 
     config = load_config()
-    runtime_config = config.get("runtime", {})
-    max_retries = runtime_config.get("max_retries", 3)
-
     llm = create_llm_from_config(config)
 
     prompt = "请用一句话介绍人工智能。"
 
-    logger.info("Sending request to LLM...")
+    logger.info("Sending request to LLM")
     logger.debug(f"Prompt: {prompt}")
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            start_time = time.time()
+    try:
+        response = run_once(llm, prompt)
 
-            response = llm.chat(prompt)
+        print("\n=== LLM Response ===")
+        print(response)
 
-            duration = time.time() - start_time
+    except LLMError as e:
+        logger.error(f"LLMError occurred | code={e.code} " f"| retryable={e.retryable}")
+        logger.exception(e)
+        raise
 
-            logger.info(
-                f"Request succeeded on attempt {attempt}, "
-                f"time_cost={duration:.3f}s"
-            )
-
-            logger.debug(f"Response: {response}")
-
-            print("\n=== LLM Response ===")
-            print(response)
-            return
-
-        except Exception as e:
-            logger.exception(
-                f"Attempt {attempt} failed: {e}"
-            )
-
-            if attempt == max_retries:
-                logger.error("All retries failed. Exiting.")
-                raise
-
-            time.sleep(1.5)
+    except Exception as e:
+        logger.exception("Unexpected error")
+        raise
 
 
 if __name__ == "__main__":
