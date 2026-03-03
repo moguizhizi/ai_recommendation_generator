@@ -60,6 +60,37 @@ def run_once(llm: ApiLLM, prompt: str) -> str:
     return response
 
 
+
+def run_stream_once(llm, prompt: str) -> str:
+    logger.info("Starting stream_chat request")
+
+    start_time = time.time()
+    response_chunks = []
+
+    try:
+        for chunk in llm.stream_chat(prompt):
+            response_chunks.append(chunk)
+
+        full_response = "".join(response_chunks)
+
+        duration = time.time() - start_time
+
+        logger.info(
+            f"Stream request succeeded | "
+            f"time_cost={duration:.3f}s | "
+            f"chars={len(full_response)}"
+        )
+
+        return full_response
+
+    except LLMError:
+        raise
+
+    except Exception as e:
+        logger.exception("Stream execution failed")
+        raise
+
+
 def main():
     logger.info("==== Test Chat API Started ====")
 
@@ -68,21 +99,35 @@ def main():
 
     prompt = "请用一句话介绍人工智能。"
 
-    logger.info("Sending request to LLM")
+    logger.info("Sending non-stream request")
     logger.debug(f"Prompt: {prompt}")
 
     try:
+        # ===== 普通 chat =====
         response = run_once(llm, prompt)
 
-        print("\n=== LLM Response ===")
+        print("\n=== Chat Response ===")
         print(response)
 
+        # ===== Stream chat =====
+        logger.info("Sending stream request")
+
+        stream_response = run_stream_once(
+            llm,
+            prompt,
+        )
+
+        print("\n=== Stream Response ===")
+        print(stream_response)
+
     except LLMError as e:
-        logger.error(f"LLMError occurred | code={e.code} " f"| retryable={e.retryable}")
+        logger.error(
+            f"LLMError occurred | code={e.code} | retryable={e.retryable}"
+        )
         logger.exception(e)
         raise
 
-    except Exception as e:
+    except Exception:
         logger.exception("Unexpected error")
         raise
 

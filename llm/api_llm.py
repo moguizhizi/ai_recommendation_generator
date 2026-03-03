@@ -1,5 +1,6 @@
 import time
 import requests
+import json
 from typing import Optional, Generator
 
 from app.core.logging import get_logger
@@ -106,7 +107,7 @@ class ApiLLM(BaseLLM):
                         original_error=e,
                     )
 
-                logger.info(
+                logger.debug(
                     f"LLM call success | model={self.model} "
                     f"| attempt={attempt} | time={duration:.3f}s"
                 )
@@ -173,7 +174,7 @@ class ApiLLM(BaseLLM):
 
         usage = data.get("usage")
         if usage:
-            logger.info(
+            logger.debug(
                 f"Token usage | prompt={usage.get('prompt_tokens')} "
                 f"| completion={usage.get('completion_tokens')} "
                 f"| total={usage.get('total_tokens')}"
@@ -226,7 +227,7 @@ class ApiLLM(BaseLLM):
                         break
 
                     try:
-                        data = requests.utils.json.loads(chunk)
+                        data = json.loads(chunk)
                         delta = data["choices"][0].get("delta", {}).get("content")
                         if delta:
                             yield delta
