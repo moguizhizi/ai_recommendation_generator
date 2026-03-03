@@ -1,8 +1,14 @@
 llm:
-  type: local          # local 或 api
-  model_path: /data/models/qwen2
-  api_key: sk-xxxxx
-  base_url: https://api.xxx.com/v1
+  type: api   # local 或 api
+
+  local:
+    model_path: /data/models/qwen2
+    base_url: http://localhost:8000
+
+  api:
+    base_url: http://localhost:8000
+    api_key: sk-xxxxx
+    model: qwen2_vl
 
 runtime:
   timeout: 60
