@@ -3,6 +3,9 @@ from collections import defaultdict
 import random
 
 from app.schemas.common import Task
+from llm.base import BaseLLM
+from llm.factory import create_llm
+from app.prompts.plan_prompt import GoalSummaryPrompt
 
 
 def get_missed_tasks_grouped_by_paradigm(
@@ -149,8 +152,36 @@ def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
     return f"每日1次，每次{durations[0]}-{durations[-1]}分钟"
 
 
-def generate_goal_by_llm(paradigm_tasks: Dict[str, List[Task]]) -> str:
+def generate_goal_by_llm(paradigm_tasks: Dict[str, List[Task]], llm: BaseLLM) -> str:
     """
-    调用大模型生成训练目标
+    根据不同训练范式下的任务 life_desc，总结生成整体训练目标
     """
-    return f""
+
+    # 1️⃣ 收集 life_desc
+    life_desc_list = []
+
+    for paradigm, tasks in paradigm_tasks.items():
+        for task in tasks:
+            if task.life_desc:
+                life_desc_list.append(f"- [{paradigm}] {task.name}: {task.life_desc}")
+
+    # 如果没有可用描述，直接返回默认值
+    if not life_desc_list:
+        return "提升综合认知能力与生活应用能力"
+
+    life_desc_text = "\n".join(life_desc_list)
+
+    # 2️⃣ 构建 Prompt
+    prompt = GoalSummaryPrompt.render(life_desc_text=life_desc_text)
+
+    # 3️⃣ 直接调用传入的 llm
+    try:
+        response = llm.chat(prompt)
+    except Exception:
+        # 如果 LLM 调用失败，返回默认目标
+        return "提升综合认知能力与生活应用能力"
+
+    if not response:
+        return "提升综合认知能力与生活应用能力"
+
+    return response.strip()

@@ -16,4 +16,4 @@ def chat_api(req: AIRecPlanRequest, request: Request):
     # 传给业务层
     result = generate_ai_plan(req, llm)
 
-    return AIRecPlanResponse(result=result)
+    return result

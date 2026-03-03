@@ -16,11 +16,8 @@ from app.services.task_processor import (
     build_level2_to_level1_map,
     build_task_repository,
 )
-from llm.factory import create_llm
-from configs import load_config
+from llm.base import BaseLLM
 
-config = load_config()
-llm = create_llm(config)
 
 USER_TYPE_MODULE_BUILDER = {
     UserType.ADVANTAGE: build_advantage_user_modules,
@@ -30,7 +27,7 @@ USER_TYPE_MODULE_BUILDER = {
 }
 
 
-def generate_ai_plan(req: AIRecPlanRequest) -> AIRecPlanResponse:
+def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
     profile = fetch_user_profile(req.user_id, req.patient_code)
 
     raw_task_info = fetch_task_info()
@@ -45,22 +42,33 @@ def generate_ai_plan(req: AIRecPlanRequest) -> AIRecPlanResponse:
     user_type: UserType = profile["user_type"]
 
     module_builder = USER_TYPE_MODULE_BUILDER.get(user_type, build_growth_user_modules)
-    modules = module_builder(profile, level2_to_level1)
+    modules = module_builder(profile, level2_to_level1, llm)
 
-    prompt = build_ai_plan_prompt(req, profile, modules)
+    # prompt = build_ai_plan_prompt(req, profile, modules)
 
-    raw_text = llm.generate(prompt)
-    llm_part = parse_ai_plan_response(raw_text)
+    # raw_text = llm.generate(prompt)
+    # llm_part = parse_ai_plan_response(raw_text)
 
-    modules = merge_llm_into_modules(modules, llm_part.modules)
+    # modules = merge_llm_into_modules(modules, llm_part.modules)
+
+    # return AIRecPlanResponse(
+    #     user_type=user_type,
+    #     overview=fixed_templates["overview"],
+    #     training_plan_intro=llm_part.training_plan_intro,
+    #     modules=modules,
+    #     score_prediction=llm_part.score_prediction,
+    #     home_advice=fixed_templates["home_advice"],
+    #     tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
+    #     raw_text=raw_text,
+    # )
 
     return AIRecPlanResponse(
         user_type=user_type,
         overview=fixed_templates["overview"],
-        training_plan_intro=llm_part.training_plan_intro,
+        training_plan_intro="",
         modules=modules,
-        score_prediction=llm_part.score_prediction,
+        score_prediction="",
         home_advice=fixed_templates["home_advice"],
         tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
-        raw_text=raw_text,
+        raw_text="",
     )

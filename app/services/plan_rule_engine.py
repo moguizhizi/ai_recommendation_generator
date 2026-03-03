@@ -11,6 +11,7 @@ from app.services.modules_processor import (
     generate_goal_by_llm,
     get_missed_tasks_grouped_by_paradigm,
 )
+from llm.base import BaseLLM
 
 ABILITY_NAME_MAP = {
     "memory": "记忆力",
@@ -164,6 +165,7 @@ def build_user_modules_by_threshold(
     enriched_profile: dict,
     level2_to_level1: Dict[str, str],
     threshold: int,
+    llm: BaseLLM,
 ) -> List[TrainingModule]:
     level1_scores: Dict[str, int] = enriched_profile.get("level1_scores", {})
     level2_scores: Dict[str, Dict[str, int]] = enriched_profile.get("level2_scores", {})
@@ -268,7 +270,7 @@ def build_user_modules_by_threshold(
             tasks=fetch_tasks_by_ability(paradigm_tasks),
             difficulty=calc_difficulty(last_task, paradigm_tasks),
             frequency=fetch_frequency(paradigm_tasks),
-            goal=generate_goal_by_llm(ability_name_cn),
+            goal=generate_goal_by_llm(paradigm_tasks, llm),
             description="低压力、高成功体验",
         )
 
@@ -320,7 +322,7 @@ def build_user_modules_by_threshold(
 
 
 def build_advantage_user_modules(
-    enriched_profile: dict, level2_to_level1: dict
+    enriched_profile: dict, level2_to_level1: dict, llm: BaseLLM
 ) -> List[TrainingModule]:
     """
     构建【优势倾向型】用户的训练模块结构
@@ -329,11 +331,12 @@ def build_advantage_user_modules(
         enriched_profile=enriched_profile,
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
+        llm=llm,
     )
 
 
 def build_potential_user_modules(
-    enriched_profile: dict, level2_to_level1: dict
+    enriched_profile: dict, level2_to_level1: dict, llm: BaseLLM
 ) -> List[TrainingModule]:
     """
     构建【潜能倾向型】用户的训练模块结构
@@ -342,11 +345,12 @@ def build_potential_user_modules(
         enriched_profile=enriched_profile,
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.POTENTIAL_LINE,
+        llm=llm,
     )
 
 
 def build_special_user_modules(
-    enriched_profile: dict, level2_to_level1: dict
+    enriched_profile: dict, level2_to_level1: dict, llm: BaseLLM
 ) -> List[TrainingModule]:
     """
     构建【专项优势型】用户的训练模块结构
@@ -355,11 +359,12 @@ def build_special_user_modules(
         enriched_profile=enriched_profile,
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
+        llm=llm,
     )
 
 
 def build_growth_user_modules(
-    enriched_profile: dict, level2_to_level1: dict
+    enriched_profile: dict, level2_to_level1: dict, llm: BaseLLM
 ) -> List[TrainingModule]:
     """
     构建【蓄力成长型】用户的训练模块结构
@@ -368,6 +373,7 @@ def build_growth_user_modules(
         enriched_profile=enriched_profile,
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.POTENTIAL_LINE,
+        llm=llm,
     )
 
 
