@@ -3,6 +3,7 @@ from app.core.constants import ModuleName, UserType, ScoreThreshold
 from typing import Dict, List, Tuple
 from collections import defaultdict
 from app.schemas.chat import (
+    AIRecPlanData,
     DimensionScorePrediction,
     ScorePrediction,
     TrainingItem,
@@ -499,3 +500,70 @@ def build_score_prediction(profile: dict, fixed_templates: dict) -> ScorePredict
         executive_control=build_dim("执行控制"),
         perception=build_dim("感知觉"),
     )
+
+
+def render_plan_text(plan: AIRecPlanData) -> str:
+    lines = []
+
+    # 1️⃣ 开篇
+    lines.append("1）开篇文案概述")
+    lines.append(plan.overview)
+    lines.append("")
+
+    # 2️⃣ 训练计划
+    lines.append("2）AI推荐训练计划内容展示")
+    lines.append(plan.training_plan_intro)
+    lines.append("")
+
+    for idx, module in enumerate(plan.modules, 1):
+        lines.append(f"{idx}. {module.module_name}")
+
+        for sub_idx, item in enumerate(module.items):
+            letter = chr(97 + sub_idx)  # a,b,c,d
+
+            lines.append(f"    {letter}. {item.name}")
+            lines.append(f"        任务：{item.tasks}")
+            lines.append(f"        难度：{item.difficulty}")
+            lines.append(f"        频次：{item.frequency}")
+            lines.append(f"        目标：{item.goal}")
+
+            if item.description:
+                lines.append(f"        说明：{item.description}")
+
+            lines.append("")
+
+    # 3️⃣ 分数预测
+    sp = plan.score_prediction
+    lines.append("3）AI分数预测")
+    lines.append(sp.summary)
+    lines.append("")
+
+    lines.append(
+        f"注意力完成度：{sp.attention.historical_score} → {sp.attention.predicted_score}"
+    )
+    lines.append(
+        f"记忆力完成度：{sp.memory.historical_score} → {sp.memory.predicted_score}"
+    )
+    lines.append(
+        f"执行控制完成度：{sp.executive_control.historical_score} → {sp.executive_control.predicted_score}"
+    )
+    lines.append(
+        f"感知觉完成度：{sp.perception.historical_score} → {sp.perception.predicted_score}"
+    )
+
+    lines.append("")
+    lines.append("▲预测数据仅供参考，以孩子最终训练数据为准")
+    lines.append("")
+
+    # 4️⃣ 居家建议
+    lines.append("4）居家训练建议")
+    for advice in plan.home_advice:
+        lines.append(f"- {advice}")
+    lines.append("")
+
+    # 5️⃣ 效果追踪
+    lines.append("5）效果追踪与动态调整")
+    for item in plan.tracking_and_adjustment:
+        lines.append(item)
+
+    return "\n".join(lines)
