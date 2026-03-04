@@ -18,6 +18,10 @@ from app.services.task_processor import (
 )
 from llm.base import BaseLLM
 
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 USER_TYPE_MODULE_BUILDER = {
     UserType.ADVANTAGE: build_advantage_user_modules,
@@ -28,47 +32,35 @@ USER_TYPE_MODULE_BUILDER = {
 
 
 def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
-    profile = fetch_user_profile(req.user_id, req.patient_code)
 
-    raw_task_info = fetch_task_info()
-    task_repo = build_task_repository(raw_task_info)
+    try:
+        profile = fetch_user_profile(req.user_id, req.patient_code)
+        raw_task_info = fetch_task_info()
+        task_repo = build_task_repository(raw_task_info)
 
-    profile = enrich_user_profile_with_tasks(profile, task_repo)
-    profile = enrich_profile_with_user_type(profile)
+        profile = enrich_user_profile_with_tasks(profile, task_repo)
+        profile = enrich_profile_with_user_type(profile)
 
-    fixed_templates = get_fixed_templates(profile)
-    level2_to_level1 = build_level2_to_level1_map(task_repo)
+        fixed_templates = get_fixed_templates(profile)
+        level2_to_level1 = build_level2_to_level1_map(task_repo)
 
-    user_type: UserType = profile["user_type"]
+        user_type: UserType = profile["user_type"]
+        module_builder = USER_TYPE_MODULE_BUILDER.get(
+            user_type, build_growth_user_modules
+        )
+        modules = module_builder(profile, level2_to_level1, llm)
 
-    module_builder = USER_TYPE_MODULE_BUILDER.get(user_type, build_growth_user_modules)
-    modules = module_builder(profile, level2_to_level1, llm)
+        return AIRecPlanResponse(
+            user_type=user_type,
+            overview=fixed_templates["overview"],
+            training_plan_intro="",
+            modules=modules,
+            score_prediction="",
+            home_advice=fixed_templates["home_advice"],
+            tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
+            raw_text="",
+        )
 
-    # prompt = build_ai_plan_prompt(req, profile, modules)
-
-    # raw_text = llm.generate(prompt)
-    # llm_part = parse_ai_plan_response(raw_text)
-
-    # modules = merge_llm_into_modules(modules, llm_part.modules)
-
-    # return AIRecPlanResponse(
-    #     user_type=user_type,
-    #     overview=fixed_templates["overview"],
-    #     training_plan_intro=llm_part.training_plan_intro,
-    #     modules=modules,
-    #     score_prediction=llm_part.score_prediction,
-    #     home_advice=fixed_templates["home_advice"],
-    #     tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
-    #     raw_text=raw_text,
-    # )
-
-    return AIRecPlanResponse(
-        user_type=user_type,
-        overview=fixed_templates["overview"],
-        training_plan_intro="",
-        modules=modules,
-        score_prediction="",
-        home_advice=fixed_templates["home_advice"],
-        tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
-        raw_text="",
-    )
+    except Exception as e:
+        logger.exception(f"[AI_PLAN_ERROR] user_id={req.user_id} error={str(e)}")
+        raise

@@ -9,9 +9,9 @@ from typing import Dict
 #     - 一级脑能力分数
 #     - 二级脑能力分数
 #     - 行为画像（最近任务 / 漏训任务）
+#     - 返回 user_id 和 patient_code
 #     """
 #     url = "http://user-profile-service/api/v1/profile"
-
 #     params = {"user_id": user_id, "patient_code": patient_code}
 
 #     resp = requests.get(url, params=params, timeout=3)
@@ -21,10 +21,7 @@ from typing import Dict
 #     # --- 最后一次训练任务 ---
 #     last_task = data.get("last_task", {})
 #     last_task_info = (
-#         {
-#             "id": last_task.get("id"),
-#             "name": last_task.get("name"),
-#         }
+#         {"id": last_task.get("id"), "name": last_task.get("name")}
 #         if last_task
 #         else None
 #     )
@@ -37,39 +34,33 @@ from typing import Dict
 
 #     # --- 一级脑能力 ---
 #     level1_scores = {
-#         "memory": data.get("memory_score", 0),  # 记忆力
-#         "exec": data.get("exec_score", 0),  # 执行控制
-#         "attention": data.get("attention_score", 0),  # 注意力
-#         "perception": data.get("perception_score", 0),  # 感知觉
+#         "memory": data.get("memory_score", 0),
+#         "exec": data.get("exec_score", 0),
+#         "attention": data.get("attention_score", 0),
+#         "perception": data.get("perception_score", 0),
 #     }
 
 #     # --- 二级脑能力 ---
 #     level2_scores = {
 #         "memory": {
-#             "working_memory": data.get("memory_working_score", 0),  # 记忆力-工作记忆
-#             "spatial_memory": data.get("memory_spatial_score", 0),  # 记忆力-空间记忆
+#             "working_memory": data.get("memory_working_score", 0),
+#             "spatial_memory": data.get("memory_spatial_score", 0),
 #         },
 #         "exec": {
-#             "conflict_inhibition": data.get(
-#                 "exec_conflict_score", 0
-#             ),  # 执行控制-冲突抑制
-#             "interference_control": data.get(
-#                 "exec_interfere_score", 0
-#             ),  # 执行控制-干扰控制
+#             "conflict_inhibition": data.get("exec_conflict_score", 0),
+#             "interference_control": data.get("exec_interfere_score", 0),
 #         },
 #         "attention": {
-#             "alerting": data.get("attention_alert_score", 0),  # 注意力-警觉性注意
-#             "sustained": data.get("attention_sustain_score", 0),  # 注意力-持续性注意
+#             "alerting": data.get("attention_alert_score", 0),
+#             "sustained": data.get("attention_sustain_score", 0),
 #         },
-#         "perception": {
-#             "spatial_perception": data.get(
-#                 "perception_spatial_score", 0
-#             )  # 感知觉-空间知觉
-#         },
+#         "perception": {"spatial_perception": data.get("perception_spatial_score", 0)},
 #     }
 
 #     return {
-#         # --- 基础画像 ---
+#         # --- 基础信息 ---
+#         "user_id": user_id,
+#         "patient_code": patient_code,
 #         "train_days": data.get("train_days", 0),
 #         "disease_tag": data.get("disease_tag", ""),
 #         # --- 能力画像 ---
@@ -88,6 +79,8 @@ def fetch_user_profile(user_id: str, patient_code: str) -> Dict:
 
     return {
         # --- 基础画像 ---
+        "user_id": user_id,
+        "patient_code": patient_code,
         "train_days": 28,
         "disease_tag": "mild_cognitive_impairment",
         # --- 一级脑能力 ---
