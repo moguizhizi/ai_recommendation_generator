@@ -7,6 +7,7 @@ from app.services.plan_rule_engine import (
     build_advantage_user_modules,
     build_growth_user_modules,
     build_potential_user_modules,
+    build_score_prediction,
     build_special_user_modules,
     enrich_profile_with_user_type,
     enrich_user_profile_with_tasks,
@@ -50,12 +51,14 @@ def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
         )
         modules = module_builder(profile, level2_to_level1, llm)
 
+        score_prediction = build_score_prediction(profile, fixed_templates)
+
         return AIRecPlanResponse(
             user_type=user_type,
             overview=fixed_templates["overview"],
             training_plan_intro=fixed_templates["training_plan_intro"],
             modules=modules,
-            score_prediction="",
+            score_prediction=score_prediction,
             home_advice=fixed_templates["home_advice"],
             tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
             raw_text="",
