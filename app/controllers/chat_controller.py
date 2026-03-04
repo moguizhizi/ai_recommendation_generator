@@ -1,15 +1,16 @@
 # app/controllers/chat_controller.py
 
 import time
-import logging
 from fastapi import APIRouter, Request
 from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse
 from app.services.chat_service import generate_ai_plan
 from llm.base import BaseLLM
 
-router = APIRouter()
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+router = APIRouter()
 
 
 @router.post("/chat", response_model=AIRecPlanResponse)
