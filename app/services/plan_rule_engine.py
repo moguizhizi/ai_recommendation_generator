@@ -267,25 +267,28 @@ def build_user_modules_by_threshold(
     advantage_items = [
         item
         for a in top_two
-        if (item := build_training_item(
-            level1_key=a,
-            score=level1_scores.get(a, 0),
-            suffix="进阶训练",
-            level2_keys=level1_to_level2_map.get(a),
-        ))
+        if (
+            item := build_training_item(
+                level1_key=a,
+                score=level1_scores.get(a, 0),
+                suffix="进阶训练",
+                level2_keys=level1_to_level2_map.get(a),
+            )
+        )
     ]
 
     balanced_items = [
         item
         for a in balanced
-        if (item := build_training_item(
-            level1_key=a,
-            score=level1_scores.get(a, 0),
-            suffix="巩固训练",
-            level2_keys=level1_to_level2_map.get(a),
-        ))
+        if (
+            item := build_training_item(
+                level1_key=a,
+                score=level1_scores.get(a, 0),
+                suffix="巩固训练",
+                level2_keys=level1_to_level2_map.get(a),
+            )
+        )
     ]
-    
 
     module_names = USER_TYPE_MODULE_MAP.get(
         user_type, USER_TYPE_MODULE_MAP[UserType.GROWTH]
@@ -388,6 +391,9 @@ def get_fixed_templates(profile: dict) -> dict:
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线，对比感知觉、执行控制、注意力、记忆力的稳定性与训练效果；每3个月生成阶段报告，评估阶段训练效果及孩子生活行为改善情况。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
+            "score_prediction": [
+                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
+            ],
         },
         UserType.POTENTIAL.value: {
             "overview": (
@@ -408,6 +414,9 @@ def get_fixed_templates(profile: dict) -> dict:
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线；每3个月生成阶段报告。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
+            "score_prediction": [
+                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
+            ],
         },
         UserType.SPECIAL.value: {
             "overview": (
@@ -425,6 +434,9 @@ def get_fixed_templates(profile: dict) -> dict:
             "tracking_and_adjustment": [
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线；每3个月生成阶段报告。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
+            ],
+            "score_prediction": [
+                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
             ],
         },
         UserType.GROWTH.value: {
@@ -444,6 +456,9 @@ def get_fixed_templates(profile: dict) -> dict:
             "tracking_and_adjustment": [
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线；每3个月生成阶段报告。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
+            ],
+            "score_prediction": [
+                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
             ],
         },
     }
