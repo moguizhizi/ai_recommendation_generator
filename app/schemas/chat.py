@@ -69,32 +69,61 @@ class TrainingModule(BaseModel):
     items: List[TrainingItem] = Field(..., title="模块内训练项列表")
 
 
-class AIRecPlanResponse(BaseModel):
+class AIRecPlanData(BaseModel):
     user_type: Literal["优势倾向型", "潜能倾向型", "专项优势型", "蓄力成长型"]
+
     overview: str = Field(
         ...,
         title="方案开篇概述",
         description="固定开篇文案，用于向家长说明本次AI方案的整体目标",
     )
+
     training_plan_intro: str = Field(
-        ..., title="训练计划引导语", description="对训练模块的整体说明与导读"
+        ...,
+        title="训练计划引导语",
+        description="对训练模块的整体说明与导读",
     )
+
     modules: List[TrainingModule] = Field(
-        ..., title="训练模块列表", description="不同用户类型对应不同模块组合"
+        ...,
+        title="训练模块列表",
+        description="不同用户类型对应不同模块组合",
     )
+
     score_prediction: ScorePrediction = Field(
         ...,
         title="AI 分数预测模块",
         description="包含预测说明文案与四个维度预测数据",
     )
+
     home_advice: List[str] = Field(
-        ..., title="居家训练建议", description="固定文案，给家长的家庭训练建议"
+        ...,
+        title="居家训练建议",
+        description="固定文案，给家长的家庭训练建议",
     )
+
     tracking_and_adjustment: List[str] = Field(
         ...,
         title="效果追踪与动态调整说明",
         description="固定文案，描述数据监测与任务迭代规则",
     )
+
     raw_text: str = Field(
-        ..., title="LLM 原始输出", description="模型原始生成全文，用于审计与调试"
+        ...,
+        title="LLM 原始输出",
+        description="模型原始生成全文，用于审计与调试",
+    )
+
+
+class AIRecPlanResponse(BaseModel):
+    data: AIRecPlanData = Field(
+        ...,
+        title="结构化训练方案数据",
+        description="AI生成的结构化训练方案内容",
+    )
+
+    display_text: str = Field(
+        ...,
+        title="方案展示全文",
+        description="由结构化数据渲染生成的完整展示文本，用于前端直接展示或报告导出",
     )

@@ -2,7 +2,7 @@
 from app.clients.task_client import fetch_task_info
 from app.clients.user_profile_client import fetch_user_profile
 from app.core.constants import UserType
-from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse
+from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse
 from app.services.plan_rule_engine import (
     build_advantage_user_modules,
     build_growth_user_modules,
@@ -12,6 +12,7 @@ from app.services.plan_rule_engine import (
     enrich_profile_with_user_type,
     enrich_user_profile_with_tasks,
     get_fixed_templates,
+    render_plan_text,
 )
 from app.services.task_processor import (
     build_level2_to_level1_map,
@@ -33,7 +34,6 @@ USER_TYPE_MODULE_BUILDER = {
 
 
 def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
-
     try:
         profile = fetch_user_profile(req.user_id, req.patient_code)
         raw_task_info = fetch_task_info()
@@ -46,6 +46,7 @@ def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
         level2_to_level1 = build_level2_to_level1_map(task_repo)
 
         user_type: UserType = profile["user_type"]
+
         module_builder = USER_TYPE_MODULE_BUILDER.get(
             user_type, build_growth_user_modules
         )
@@ -53,7 +54,8 @@ def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
 
         score_prediction = build_score_prediction(profile, fixed_templates)
 
-        return AIRecPlanResponse(
+        # 构建核心数据对象
+        plan_data = AIRecPlanData(
             user_type=user_type,
             overview=fixed_templates["overview"],
             training_plan_intro=fixed_templates["training_plan_intro"],
@@ -61,7 +63,16 @@ def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
             score_prediction=score_prediction,
             home_advice=fixed_templates["home_advice"],
             tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
-            raw_text="",
+            raw_text="",  # 如果后面接LLM可以填
+        )
+
+        # 渲染展示文本
+        display_text = render_plan_text(plan_data)
+
+        # 返回包装结构
+        return AIRecPlanResponse(
+            data=plan_data,
+            display_text=display_text,
         )
 
     except Exception as e:
