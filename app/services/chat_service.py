@@ -53,7 +53,7 @@ def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
         return AIRecPlanResponse(
             user_type=user_type,
             overview=fixed_templates["overview"],
-            training_plan_intro="",
+            training_plan_intro=fixed_templates["training_plan_intro"],
             modules=modules,
             score_prediction="",
             home_advice=fixed_templates["home_advice"],
