@@ -2,7 +2,12 @@
 from app.core.constants import ModuleName, UserType, ScoreThreshold
 from typing import Dict, List, Tuple
 from collections import defaultdict
-from app.schemas.chat import TrainingItem, TrainingModule
+from app.schemas.chat import (
+    DimensionScorePrediction,
+    ScorePrediction,
+    TrainingItem,
+    TrainingModule,
+)
 from app.schemas.common import Task
 from app.services.modules_processor import (
     fetch_tasks_by_ability,
@@ -391,9 +396,7 @@ def get_fixed_templates(profile: dict) -> dict:
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线，对比感知觉、执行控制、注意力、记忆力的稳定性与训练效果；每3个月生成阶段报告，评估阶段训练效果及孩子生活行为改善情况。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
-            "score_prediction": [
-                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
-            ],
+            "score_prediction": "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
         },
         UserType.POTENTIAL.value: {
             "overview": (
@@ -414,9 +417,7 @@ def get_fixed_templates(profile: dict) -> dict:
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线；每3个月生成阶段报告。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
-            "score_prediction": [
-                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
-            ],
+            "score_prediction": "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
         },
         UserType.SPECIAL.value: {
             "overview": (
@@ -435,9 +436,7 @@ def get_fixed_templates(profile: dict) -> dict:
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线；每3个月生成阶段报告。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
-            "score_prediction": [
-                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
-            ],
+            "score_prediction": "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
         },
         UserType.GROWTH.value: {
             "overview": (
@@ -457,10 +456,38 @@ def get_fixed_templates(profile: dict) -> dict:
                 "数据监测：系统会每日记录任务完成率并推送日报；每周生成能力变化曲线；每3个月生成阶段报告。",
                 "迭代规则：每天更新任务，同一个训练任务连续出现不超过3天。",
             ],
-            "score_prediction": [
-                "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
-            ],
+            "score_prediction": "按照训练方案，每天执行训练任务，预估下一阶段各一级脑力值能会有明显提升。除了做任务，孩子情绪状态也很重要，家长要多关注和陪伴孩子。",
         },
     }
 
     return templates.get(profile["user_type"], templates[UserType.GROWTH.value])
+
+
+def simple_predict(score: float) -> float:
+    if score < 60:
+        return score + 5
+    elif score < 80:
+        return score + 3
+    else:
+        return score + 1
+
+
+def build_score_prediction(profile: dict, fixed_templates: dict) -> ScorePrediction:
+    level1_scores = profile.get("level1_scores", {})
+
+    def build_dim(key: str) -> DimensionScorePrediction:
+        historical = float(level1_scores.get(key, 0))
+        predicted = simple_predict(historical)
+
+        return DimensionScorePrediction(
+            historical_score=historical,
+            predicted_score=predicted,
+        )
+
+    return ScorePrediction(
+        summary=fixed_templates["score_prediction"],
+        attention=build_dim("注意力"),
+        memory=build_dim("记忆力"),
+        executive_control=build_dim("执行控制"),
+        perception=build_dim("感知觉"),
+    )
