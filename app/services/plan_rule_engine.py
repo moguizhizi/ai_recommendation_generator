@@ -106,20 +106,31 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
 def enrich_profile_with_user_type(profile: dict) -> dict:
     """
     给用户画像 profile 打上 user_type 标签（写回 profile 并返回）
-    """
-    level1_scores = profile.get("level1_scores", {})
-    level2_scores = profile.get("level2_scores", {})
 
+    规则：
+    1. 优势倾向型：存在一级脑能力 ≥ ADVANTAGE_LINE
+    2. 潜能倾向型：存在一级脑能力 ∈ [POTENTIAL_LINE, ADVANTAGE_LINE)
+    3. 蓄力成长型：
+       若不属于以上两类，
+       则说明所有一级脑能力数值都 < ADVANTAGE_LINE（如 90）
+    """
+
+    level1_scores = profile.get("level1_scores", {})
     level1_values = [v for v in level1_scores.values() if isinstance(v, (int, float))]
 
-    # 默认值
+    # 默认值：蓄力成长型
+    # 此分支意味着：
+    # - 不存在一级能力 ≥ ADVANTAGE_LINE
+    # - 不存在一级能力 ∈ [POTENTIAL_LINE, ADVANTAGE_LINE)
+    # => 所有一级脑能力数值都 < POTENTIAL_LINE
+    # => 且必然 < ADVANTAGE_LINE（如 100）
     user_type = UserType.GROWTH
-    reason = "默认蓄力成长型"
+    reason = "所有一级脑能力数值都小于 POTENTIAL_LINE（如 90），划为蓄力成长型"
 
     # 1️⃣ 优势倾向型
     if any(v >= ScoreThreshold.ADVANTAGE_LINE for v in level1_values):
         user_type = UserType.ADVANTAGE
-        reason = "一级脑能力 ≥ ADVANTAGE_LINE"
+        reason = "存在一级脑能力 ≥ ADVANTAGE_LINE"
 
     # 2️⃣ 潜能倾向型
     elif any(
@@ -127,16 +138,7 @@ def enrich_profile_with_user_type(profile: dict) -> dict:
         for v in level1_values
     ):
         user_type = UserType.POTENTIAL
-        reason = "一级脑能力 ∈ [POTENTIAL_LINE, ADVANTAGE_LINE)"
-
-    # 3️⃣ 专项优势型（二级能力存在明显优势）
-    else:
-        for _, sub_scores in level2_scores.items():
-            for v in sub_scores.values():
-                if isinstance(v, (int, float)) and v > ScoreThreshold.ADVANTAGE_LINE:
-                    user_type = UserType.SPECIAL
-                    reason = "二级脑能力 > ADVANTAGE_LINE"
-                    break
+        reason = "存在一级脑能力 ∈ [POTENTIAL_LINE, ADVANTAGE_LINE)"
 
     enriched_profile = dict(profile)  # 浅拷贝，避免污染原对象
     enriched_profile["user_type"] = user_type
@@ -146,7 +148,6 @@ def enrich_profile_with_user_type(profile: dict) -> dict:
     logger.debug(
         f"[ENRICH_PROFILE] user_id={user_id} "
         f"level1_scores={level1_scores} "
-        f"level2_scores={level2_scores} "
         f"user_type={user_type} "
         f"reason={reason}"
     )
