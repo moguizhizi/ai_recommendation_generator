@@ -154,15 +154,14 @@ def enrich_profile_with_user_type(profile: dict) -> dict:
 
     return enriched_profile
 
-
 def build_user_modules_by_threshold(
     enriched_profile: dict,
-    level2_to_level1: Dict[str, str],
+    level2_to_level1: Dict[str, str],  # 保留参数避免外部报错，但不再使用
     threshold: int,
     llm: BaseLLM,
 ) -> List[TrainingModule]:
+
     level1_scores: Dict[str, int] = enriched_profile.get("level1_scores", {})
-    level2_scores: Dict[str, Dict[str, int]] = enriched_profile.get("level2_scores", {})
     weekly_missed_task_infos: List[Task] = enriched_profile.get(
         "weekly_missed_task_infos", []
     )
@@ -170,85 +169,69 @@ def build_user_modules_by_threshold(
     user_type: UserType = enriched_profile.get("user_type", UserType.GROWTH)
     user_id = enriched_profile.get("user_id", "unknown")
 
-    level1_to_level2_map: Dict[str, List[str]] = defaultdict(list)
-    remaining_level1_to_level2_map: Dict[str, List[str]] = defaultdict(list)
-
-    # --- 计算 top_two / balanced ---
     top_two: List[str] = []
     balanced: List[str] = []
 
-    if user_type in (UserType.SPECIAL, UserType.GROWTH):
-        level2_list: List[Tuple[str, int]] = [
-            (level2_key, score)
-            for _, sub_scores in level2_scores.items()
-            for level2_key, score in sub_scores.items()
-        ]
+    # ==============================
+    # 计算 top_two / balanced
+    # ==============================
 
-        if user_type == UserType.SPECIAL:
-            filtered_level2 = [(k, v) for k, v in level2_list if v > threshold]
-        else:
-            filtered_level2 = [(k, v) for k, v in level2_list if v <= threshold]
-
-        filtered_level2_sorted = sorted(
-            filtered_level2, key=lambda x: x[1], reverse=True
+    # 1️⃣ 蓄力成长型
+    # 规则：
+    # 所有一级脑能力都 < POTENTIAL_LINE
+    # 因此只做相对排序
+    if user_type == UserType.GROWTH:
+        sorted_level1 = sorted(
+            level1_scores.items(),
+            key=lambda x: x[1],
+            reverse=True,
         )
-        hit_level2_keys = set()
-        seen_level1 = set()
 
-        for level2_key, _ in filtered_level2_sorted:
-            level1_key = level2_to_level1.get(level2_key)
-            if not level1_key:
-                continue
-            hit_level2_keys.add(level2_key)
-            level1_to_level2_map[level1_key].append(level2_key)
+        top_two = [ability for ability, _ in sorted_level1[:2]]
+        balanced = [ability for ability, _ in sorted_level1[2:]]
 
-            if level1_key not in seen_level1:
-                top_two.append(level1_key)
-                seen_level1.add(level1_key)
-            if len(top_two) >= 2:
-                break
-
-        balanced = [k for k in level1_scores.keys() if k not in top_two]
-
-        for level2_key, score in level2_list:
-            if level2_key in hit_level2_keys:
-                continue
-            level1_key = level2_to_level1.get(level2_key)
-            if not level1_key:
-                continue
-            remaining_level1_to_level2_map[level1_key].append(level2_key)
-
+    # 2️⃣ 优势倾向型 / 潜能倾向型
     else:
         qualified = [
             (ability, score)
             for ability, score in level1_scores.items()
             if score >= threshold
         ]
-        qualified_sorted = sorted(qualified, key=lambda x: x[1], reverse=True)
+
+        qualified_sorted = sorted(
+            qualified,
+            key=lambda x: x[1],
+            reverse=True,
+        )
+
         top_two = [ability for ability, _ in qualified_sorted[:2]]
+
         balanced = [
             ability for ability in level1_scores.keys() if ability not in top_two
         ]
 
     logger.debug(
-        f"[BUILD_MODULES] user_id={user_id} user_type={user_type} threshold={threshold} "
-        f"top_two={top_two} balanced={balanced} "
-        f"level1_to_level2_map={dict(level1_to_level2_map)} "
-        f"remaining_level1_to_level2_map={dict(remaining_level1_to_level2_map)}"
+        f"[BUILD_MODULES] user_id={user_id} user_type={user_type} "
+        f"threshold={threshold} top_two={top_two} balanced={balanced}"
     )
+
+    # ==============================
+    # 构造训练项
+    # ==============================
 
     def build_training_item(
         level1_key: str,
         score: int,
         suffix: str,
-        level2_keys: List[str] | None = None,
-    ) -> TrainingItem:
+    ) -> TrainingItem | None:
+
         ability_name_cn = ABILITY_NAME_MAP.get(level1_key, level1_key)
+
         paradigm_tasks = get_missed_tasks_grouped_by_paradigm(
-            level1_key, weekly_missed_task_infos, level2_keys=level2_keys
+            level1_key,
+            weekly_missed_task_infos,
         )
 
-        # 关键判断
         if not paradigm_tasks:
             logger.debug(
                 f"[BUILD_TRAINING_ITEM_SKIP] user_id={user_id} "
@@ -264,12 +247,21 @@ def build_user_modules_by_threshold(
             goal=generate_goal_by_llm(paradigm_tasks, llm),
             description="低压力、高成功体验",
         )
+
         logger.debug(
-            f"[BUILD_TRAINING_ITEM] user_id={user_id} level1_key={level1_key} "
-            f"level2_keys={level2_keys} name={item.name} tasks_count={len(item.tasks)} "
-            f"difficulty={item.difficulty} frequency={item.frequency}"
+            f"[BUILD_TRAINING_ITEM] user_id={user_id} "
+            f"level1_key={level1_key} "
+            f"name={item.name} "
+            f"tasks_count={len(item.tasks)} "
+            f"difficulty={item.difficulty} "
+            f"frequency={item.frequency}"
         )
+
         return item
+
+    # ==============================
+    # 构造 advantage_items / balanced_items
+    # ==============================
 
     advantage_items = [
         item
@@ -279,7 +271,6 @@ def build_user_modules_by_threshold(
                 level1_key=a,
                 score=level1_scores.get(a, 0),
                 suffix="进阶训练",
-                level2_keys=level1_to_level2_map.get(a),
             )
         )
     ]
@@ -292,14 +283,19 @@ def build_user_modules_by_threshold(
                 level1_key=a,
                 score=level1_scores.get(a, 0),
                 suffix="巩固训练",
-                level2_keys=level1_to_level2_map.get(a),
             )
         )
     ]
 
+    # ==============================
+    # 组装模块
+    # ==============================
+
     module_names = USER_TYPE_MODULE_MAP.get(
-        user_type, USER_TYPE_MODULE_MAP[UserType.GROWTH]
+        user_type,
+        USER_TYPE_MODULE_MAP[UserType.GROWTH],
     )
+
     module_items_map = {
         ModuleName.ADVANTAGE_EXPAND: advantage_items,
         ModuleName.POTENTIAL_EXPAND: advantage_items,
@@ -312,12 +308,14 @@ def build_user_modules_by_threshold(
 
     modules = [
         TrainingModule(
-            module_name=module_name, items=module_items_map.get(module_name, [])
+            module_name=module_name,
+            items=module_items_map.get(module_name, []),
         )
         for module_name in module_names
     ]
 
     logger.debug(f"[BUILD_MODULES_DONE] user_id={user_id} modules_count={len(modules)}")
+
     return modules
 
 
