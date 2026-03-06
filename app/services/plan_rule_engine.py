@@ -154,6 +154,7 @@ def enrich_profile_with_user_type(profile: dict) -> dict:
 
     return enriched_profile
 
+
 def build_user_modules_by_threshold(
     enriched_profile: dict,
     level2_to_level1: Dict[str, str],  # 保留参数避免外部报错，但不再使用
@@ -526,8 +527,8 @@ def render_plan_text(plan: AIRecPlanData) -> str:
             lines.append(f"        频次：{item.frequency}")
             lines.append(f"        目标：{item.goal}")
 
-            if item.description:
-                lines.append(f"        说明：{item.description}")
+            # if item.description:
+            #     lines.append(f"        说明：{item.description}")
 
             lines.append("")
 
