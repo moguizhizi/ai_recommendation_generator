@@ -7,6 +7,7 @@ from app.services.chat_service import generate_ai_plan
 from llm.base import BaseLLM
 
 from app.core.logging import get_logger
+from models.model_factory import ModelManager
 
 logger = get_logger(__name__)
 
@@ -17,6 +18,7 @@ router = APIRouter()
 def chat_api(req: AIRecPlanRequest, request: Request):
 
     llm: BaseLLM = request.app.state.llm
+    score_model_manager: ModelManager = request.app.state.model_manager
 
     start_time = time.time()
 
@@ -25,7 +27,7 @@ def chat_api(req: AIRecPlanRequest, request: Request):
     )
 
     try:
-        result = generate_ai_plan(req, llm)
+        result = generate_ai_plan(req, llm, model_manager=score_model_manager)
 
         duration = round(time.time() - start_time, 3)
 
