@@ -2,7 +2,7 @@ import joblib
 import xgboost as xgb
 import numpy as np
 
-from src.models.base_model import BaseModel
+from .base_model import BaseModel
 
 
 class XGBoostModel(BaseModel):
