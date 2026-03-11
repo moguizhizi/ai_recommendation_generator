@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import joblib
 
-from src.models.base_model import BaseModel
+from .base_model import BaseModel
 
 
 class MLPNet(nn.Module):

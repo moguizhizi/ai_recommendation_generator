@@ -18,6 +18,7 @@ project_root/
 │   │   ├── auth_service.py        # Key / Token 校验
 │   │   ├── rate_limit_service.py  # 限流 / 配额
 │   │   └── usage_service.py       # 计量 / 计费
+│   │
 │   ├── prompts/                   # 📝 Prompt 层（极简版）
 │   │   ├── __init__.py
 │   │   ├── base_prompt.py         # Prompt 基类
@@ -54,8 +55,17 @@ project_root/
 │   ├── api_llm.py                 # 云端 API 实现（有 Key）
 │   └── factory.py                 # 按配置创建 LLM 实例
 │
+├── models/                        # 📊 预测模型层（机器学习模型实现）
+│   ├── base_model.py              # 模型抽象基类
+│   ├── least_square_model.py      # 最小二乘回归模型
+│   ├── lightgbm_model.py          # LightGBM 模型
+│   ├── mlp_model.py               # 多层感知机（MLP）模型
+│   ├── model_factory.py           # 模型工厂（根据配置创建模型）
+│   └── xgboost_model.py           # XGBoost 模型
+│
 ├── configs/                       # ⚙️ 配置管理
 │   ├── config.yaml                # 环境配置（本地 / API / Key / 模型名）
+│   ├── train.yaml                 # 模型训练 / 推理配置
 │   └── loader.py                  # load_config()
 │
 ├── migrations/                    # 🧬 数据库迁移（Alembic）
