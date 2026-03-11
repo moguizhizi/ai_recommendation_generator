@@ -6,20 +6,25 @@ class LightGBMModel(BaseModel):
 
     def __init__(self, params=None):
         self.params = params or {}
-        self.model = lgb.LGBMRegressor(**self.params)
+        self.model = None
 
     def fit(self, X, y):
+
+        self.model = lgb.LGBMRegressor(**self.params)
         self.model.fit(X, y)
 
     def predict(self, X):
+
+        if isinstance(self.model, lgb.Booster):
+            return self.model.predict(X)
+
         return self.model.predict(X)
 
     def save(self, path):
-        import joblib
 
-        joblib.dump(self.model, path)
+        booster = self.model.booster_
+        booster.save_model(path)
 
     def load(self, path):
-        import joblib
 
-        self.model = joblib.load(path)
+        self.model = lgb.Booster(model_file=path)
