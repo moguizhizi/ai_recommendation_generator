@@ -21,6 +21,7 @@ from app.services.task_processor import (
 from llm.base import BaseLLM
 
 from app.core.logging import get_logger
+from models.model_factory import ModelManager
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,9 @@ USER_TYPE_MODULE_BUILDER = {
 }
 
 
-def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
+def generate_ai_plan(
+    req: AIRecPlanRequest, llm: BaseLLM, model_manager: ModelManager
+) -> AIRecPlanResponse:
     try:
         profile = fetch_user_profile(req.user_id, req.patient_code)
         raw_task_info = fetch_task_info()
@@ -50,7 +53,7 @@ def generate_ai_plan(req: AIRecPlanRequest, llm: BaseLLM) -> AIRecPlanResponse:
         module_builder = USER_TYPE_MODULE_BUILDER.get(
             user_type, build_growth_user_modules
         )
-        modules = module_builder(profile, level2_to_level1, llm)
+        modules = module_builder(profile, level2_to_level1, llm, model_manager)
 
         score_prediction = build_score_prediction(profile, fixed_templates)
 
