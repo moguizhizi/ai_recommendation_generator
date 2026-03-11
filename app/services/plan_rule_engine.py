@@ -490,7 +490,9 @@ def simple_predict(score: float) -> float:
         return score + 1
 
 
-def build_score_prediction(profile: dict, fixed_templates: dict) -> ScorePrediction:
+def build_score_prediction(
+    profile: dict, fixed_templates: dict, model_manager: ModelManager
+) -> ScorePrediction:
     level1_scores = profile.get("level1_scores", {})
 
     def build_dim(key: str) -> DimensionScorePrediction:
