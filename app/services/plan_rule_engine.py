@@ -161,7 +161,6 @@ def build_user_modules_by_threshold(
     level2_to_level1: Dict[str, str],  # 保留参数避免外部报错，但不再使用
     threshold: int,
     llm: BaseLLM,
-    model_manager: ModelManager,
 ) -> List[TrainingModule]:
 
     level1_scores: Dict[str, int] = enriched_profile.get("level1_scores", {})
@@ -326,7 +325,6 @@ def build_advantage_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
-    model_manager: ModelManager,
 ) -> List[TrainingModule]:
     """
     构建【优势倾向型】用户的训练模块结构
@@ -336,7 +334,6 @@ def build_advantage_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
         llm=llm,
-        model_manager=model_manager,
     )
 
 
@@ -344,7 +341,6 @@ def build_potential_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
-    model_manager: ModelManager,
 ) -> List[TrainingModule]:
     """
     构建【潜能倾向型】用户的训练模块结构
@@ -354,7 +350,6 @@ def build_potential_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.POTENTIAL_LINE,
         llm=llm,
-        model_manager=model_manager,
     )
 
 
@@ -362,7 +357,6 @@ def build_special_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
-    model_manager: ModelManager,
 ) -> List[TrainingModule]:
     """
     构建【专项优势型】用户的训练模块结构
@@ -372,7 +366,6 @@ def build_special_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
         llm=llm,
-        model_manager=model_manager,
     )
 
 
@@ -380,7 +373,6 @@ def build_growth_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
-    model_manager: ModelManager,
 ) -> List[TrainingModule]:
     """
     构建【蓄力成长型】用户的训练模块结构
@@ -390,7 +382,6 @@ def build_growth_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.POTENTIAL_LINE,
         llm=llm,
-        model_manager=model_manager,
     )
 
 

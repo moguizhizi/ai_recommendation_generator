@@ -53,7 +53,7 @@ def generate_ai_plan(
         module_builder = USER_TYPE_MODULE_BUILDER.get(
             user_type, build_growth_user_modules
         )
-        modules = module_builder(profile, level2_to_level1, llm, model_manager)
+        modules = module_builder(profile, level2_to_level1, llm)
 
         score_prediction = build_score_prediction(profile, fixed_templates)
 
