@@ -10,6 +10,18 @@ llm:
     api_key: sk-xxxxx
     model: qwen2_vl
 
+
+score_prediction:
+  type: lightgbm   # 预测模型类型：lightgbm / xgboost / mlp / least_square
+
+  lightgbm:
+    checkpoints:
+      perception: checkpoints/cognitive_l1/perception_lightgbm.txt
+      attention: checkpoints/cognitive_l1/attention_lightgbm.txt
+      memory: checkpoints/cognitive_l1/memory_lightgbm.txt
+      executive_function: checkpoints/cognitive_l1/executive_function_lightgbm.txt
+
+
 runtime:
   timeout: 60
   max_retries: 3
