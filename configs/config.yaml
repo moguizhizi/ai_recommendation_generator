@@ -26,6 +26,7 @@ runtime:
   timeout: 60
   max_retries: 3
 
+
 csv_to_parquet:
 
   interval_seconds: 300
@@ -37,3 +38,76 @@ csv_to_parquet:
 
     - csv: data/external/raw/cognitive_l1/alg_training_task_child.csv
       parquet: data/internal/raw/cognitive_l1/alg_training_task_child.parquet
+
+
+# ==============================
+# CSV 列名映射文件
+# ==============================
+column_mapping:
+
+  alg_cogtrain_brainscore_task_child: app/core/cognitive_l1/alg_cogtrain_brainscore_task_child_column_mapping.json
+
+  alg_training_task_child: app/core/cognitive_l1/alg_training_task_child_column_mapping.json
+
+
+# ==============================
+# CSV 字段名称定义
+# key: 文件名（不含后缀）
+# value: 字段名列表
+# ==============================
+columns:
+
+  alg_training_task_child:
+    - 任务id
+    - 任务
+    - 范式
+    - 一级脑能力
+    - 难度
+    - 起始难度等级
+    - 级别上线
+    - 初始难度
+    - 生活解读
+    - 预计最小耗时
+    - 预计最大耗时
+    - 训练时间
+
+  alg_cogtrain_brainscore_task_child:
+    - 用户id
+    - 患者编码
+    - 年龄
+    - 性别
+    - 学历
+    - 疾病
+    - 最新_感知觉
+    - 最新_注意力
+    - 最新_记忆力
+    - 最新_执行控制
+    - 倒数一周_感知觉
+    - 倒数一周_注意力
+    - 倒数一周_记忆力
+    - 倒数一周_执行控制
+    - 倒数两周_感知觉
+    - 倒数两周_注意力
+    - 倒数两周_记忆力
+    - 倒数两周_执行控制
+    - 情景记忆
+    - 干扰控制
+    - 反应抑制
+    - 空间工作记忆
+    - 集中性注意
+    - 加工速度
+    - 时间知觉
+    - 选择注意
+    - 空间知觉
+    - 认知灵活性
+    - 运动知觉
+    - 警觉性注意
+    - 空间记忆
+    - 持续注意
+    - 记忆广度
+    - 冲突抑制
+    - 工作记忆
+    - 数感
+    - 注意控制
+    - 最后一天训练任务
+    - 最近七天未训练任务

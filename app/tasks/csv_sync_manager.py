@@ -19,6 +19,7 @@ def start_csv_sync_tasks(config):
                 csv_path=item["csv"],
                 parquet_path=item["parquet"],
                 interval_seconds=interval,
+                config=config,
             )
         )
 
