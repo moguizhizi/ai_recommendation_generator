@@ -49,7 +49,15 @@ project_root/
 │       └── security.py            # 加解密 / 安全工具
 │
 ├── utils/                         # 🧰 通用工具库
-│   └── logging.py                 # 日志封装
+│   ├── logger.py                  # 日志封装
+│   ├── dataframe_utils.py         # DataFrame 相关工具（pandas 操作封装，如清洗/转换）
+│   ├── io_utils.py                # 通用 IO 工具（文件读写封装）
+│   ├── json_utils.py              # JSON 读写与序列化工具
+│   ├── parquet_utils.py           # Parquet 文件读写与转换工具
+│   ├── path_utils.py              # 路径处理工具（Path 构建 / 目录创建等）
+│   ├── seed.py                    # 随机种子初始化工具（numpy / random / torch）
+│   ├── text_utils.py              # 文本处理工具（清洗、分词、字符串处理等）
+│   └── xlsx_utils.py              # Excel(xlsx) 文件读取与转换工具
 │
 ├── llm/                           # 🤖 LLM 适配层（本地 / 云 API）
 │   ├── base.py                    # LLM 抽象接口
