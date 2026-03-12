@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, Any
 
-from utils.logging import get_logger
+from utils.logger import get_logger
 from models.lightgbm_model import LightGBMModel
 from models.mlp_model import MLPModel
 from models.xgboost_model import XGBoostModel

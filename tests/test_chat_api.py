@@ -4,7 +4,7 @@ import time
 
 from configs.loader import load_config
 from llm.api_llm import ApiLLM, LLMError
-from utils.logging import setup_logging, get_logger
+from utils.logger import setup_logging, get_logger
 
 # 初始化日志
 setup_logging()
