@@ -25,3 +25,15 @@ score_prediction:
 runtime:
   timeout: 60
   max_retries: 3
+
+csv_to_parquet:
+
+  interval_seconds: 300
+
+  files:
+
+    - csv: data/external/raw/alg_cogtrain_brainscore_task_child.csv
+      parquet: data/external/raw/alg_cogtrain_brainscore_task_child.parquet
+
+    - csv: data/external/raw/alg_training_task_child.csv
+      parquet: data/external/raw/alg_training_task_child.parquet

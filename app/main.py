@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
+from app.tasks.csv_sync_manager import start_csv_sync_tasks
 from configs.loader import load_config
 from llm.factory import create_llm
 
@@ -20,43 +21,28 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ========= 启动阶段 =========
-    logger.info("Starting AI Recommendation Service...")
 
+    logger.info("Starting AI Recommendation Service...")
+    
     try:
         config = load_config()
-        logger.info("Configuration loaded successfully")
 
         app.state.llm = create_llm(config)
-        logger.info("LLM instance created successfully")
 
-        # ML models
         model_manager = ModelManager()
         model_manager.load_models(config)
 
         app.state.model_manager = model_manager
 
-        logger.info("All models loaded successfully")
+        start_csv_sync_tasks(config)
 
     except Exception as e:
-        logger.exception("Failed to initialize LLM during startup")
+        logger.exception("Failed to initialize services")
         raise e
 
     yield
 
-    # ========= 关闭阶段 =========
     logger.info("Shutting down AI Recommendation Service...")
-
-    llm = getattr(app.state, "llm", None)
-
-    if llm and hasattr(llm, "session"):
-        try:
-            llm.session.close()
-            logger.info("LLM session closed successfully")
-        except Exception:
-            logger.exception("Error while closing LLM session")
-
-    logger.info("Shutdown complete")
 
 
 app = FastAPI(title="AI Recommendation Service", lifespan=lifespan)

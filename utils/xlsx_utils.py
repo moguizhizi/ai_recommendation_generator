@@ -10,9 +10,9 @@ from openpyxl import load_workbook
 from typing import List
 import time
 
-from src.utils.dataframe_utils import clean_dataframe
-from src.utils.logger import get_logger
-from src.utils.path_utils import safe_filename
+from utils.dataframe_utils import clean_dataframe
+from utils.logger import get_logger
+from utils.path_utils import safe_filename
 
 logger = get_logger(__name__)
 
