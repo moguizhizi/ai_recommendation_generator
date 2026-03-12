@@ -78,6 +78,10 @@ project_root/
 │   ├── train.yaml                 # 模型训练 / 推理配置
 │   └── loader.py                  # load_config()
 │
+├── data/                          # 📂 项目数据目录（用于存放原始数据、外部数据及中间处理结果）
+│   └── external/                  # 外部来源的数据（其他系统或共享存储同步的数据）
+│       └── raw/                   # 原始数据层（未经处理的数据，如 CSV、Excel 等）
+│
 ├── migrations/                    # 🧬 数据库迁移（Alembic）
 ├── scripts/                       # 🛠️ 启动 / 运维脚本
 │   ├── start_api.sh               # 启动 API 服务
