@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
 
     logger.info("Starting AI Recommendation Service...")
-    
+
     try:
         config = load_config()
 
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
         model_manager.load_models(config)
 
         app.state.model_manager = model_manager
-
+        
         start_csv_sync_tasks(config)
 
     except Exception as e:

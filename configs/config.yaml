@@ -32,8 +32,8 @@ csv_to_parquet:
 
   files:
 
-    - csv: data/external/raw/alg_cogtrain_brainscore_task_child.csv
-      parquet: data/external/raw/alg_cogtrain_brainscore_task_child.parquet
+    - csv: data/external/raw/cognitive_l1/alg_cogtrain_brainscore_task_child.csv
+      parquet: data/internal/raw/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
 
-    - csv: data/external/raw/alg_training_task_child.csv
-      parquet: data/external/raw/alg_training_task_child.parquet
+    - csv: data/external/raw/cognitive_l1/alg_training_task_child.csv
+      parquet: data/internal/raw/cognitive_l1/alg_training_task_child.parquet
