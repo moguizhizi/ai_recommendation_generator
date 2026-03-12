@@ -1,0 +1,21 @@
+{
+    "医院id": "hospital_id",
+    "医院": "hospital_name",
+    "患者姓名": "patient_name",
+    "患者编码": "patient_id",
+    "性别": "gender",
+    "出生日期": "birth_date",
+    "开始训练的年龄": "age_at_training_start",
+    "年龄组": "age_group",
+    "疾病标签": "disease_label",
+    "科室": "department",
+    "首次测评脑能力均值(任务40-160均值)": "first_assessment_mean_score",
+    "前测组别": "pretest_group",
+    "首个应训练日日期": "first_training_date",
+    "训练周数": "training_week",
+    "该周达标天数": "qualified_training_days",
+    "感知觉": "perception",
+    "注意力": "attention",
+    "记忆力": "memory",
+    "执行功能": "executive_function"
+}

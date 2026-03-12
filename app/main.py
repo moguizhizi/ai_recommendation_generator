@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
         model_manager.load_models(config)
 
         app.state.model_manager = model_manager
-        
+
         start_csv_sync_tasks(config)
 
     except Exception as e:
