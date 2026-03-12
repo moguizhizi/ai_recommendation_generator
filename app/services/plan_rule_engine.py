@@ -19,7 +19,7 @@ from app.services.modules_processor import (
 )
 from llm.base import BaseLLM
 
-from app.core.logging import get_logger
+from utils.logging import get_logger
 from models.model_factory import ModelManager
 
 logger = get_logger(__name__)

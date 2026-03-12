@@ -4,7 +4,7 @@ from typing import Dict, List
 from collections import defaultdict
 
 from app.schemas.common import Task
-from app.core.logging import get_logger
+from utils.logging import get_logger
 
 logger = get_logger(__name__)
 

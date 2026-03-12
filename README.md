@@ -45,9 +45,11 @@ project_root/
 │   │   └── usage_repo.py          # 调用计量 / 用量统计
 │   │
 │   └── core/                      # ⚙️ 全局基础能力
-│       ├── logging.py             # 日志封装
 │       ├── errors.py              # 统一异常定义
 │       └── security.py            # 加解密 / 安全工具
+│
+├── utils/                         # 🧰 通用工具库
+│   └── logging.py                 # 日志封装
 │
 ├── llm/                           # 🤖 LLM 适配层（本地 / 云 API）
 │   ├── base.py                    # LLM 抽象接口
