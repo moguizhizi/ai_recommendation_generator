@@ -9,7 +9,7 @@ from llm.factory import create_llm
 from app.controllers.chat_controller import router as chat_router
 from app.controllers.health_controller import router as health_router
 
-from utils.logging import setup_logging, get_logger
+from utils.logger import setup_logging, get_logger
 from models.model_factory import ModelManager
 
 

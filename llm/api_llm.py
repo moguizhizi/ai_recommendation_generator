@@ -3,7 +3,7 @@ import requests
 import json
 from typing import Optional, Generator
 
-from utils.logging import get_logger
+from utils.logger import get_logger
 from llm.base import BaseLLM
 
 logger = get_logger(__name__)

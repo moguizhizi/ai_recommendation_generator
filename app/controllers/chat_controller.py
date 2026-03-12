@@ -6,7 +6,7 @@ from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse
 from app.services.chat_service import generate_ai_plan
 from llm.base import BaseLLM
 
-from utils.logging import get_logger
+from utils.logger import get_logger
 from models.model_factory import ModelManager
 
 logger = get_logger(__name__)
