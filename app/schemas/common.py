@@ -1,34 +1,31 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
+from typing import Optional
+
 
 class Task(BaseModel):
-    id: str = Field(..., title="任务ID")
-    name: str = Field(..., title="任务名称")
+
+    task_id: str = Field(..., title="任务ID")
+    task_name: str = Field(..., title="任务名称")
+
+    paradigm: Optional[str] = Field(None, title="训练范式")
+    cognitive_domain: Optional[str] = Field(None, title="一级脑能力")
 
     difficulty: Optional[float] = Field(None, title="难度等级")
-    life_desc: Optional[str] = Field(None, title="生活场景描述")
-    paradigm: Optional[str] = Field(None, title="训练范式")
-    duration_min: Optional[int] = Field(None, title="建议训练时长（分钟）")
+    start_level: Optional[int] = Field(None, title="起始难度等级")
+    level_max: Optional[int] = Field(None, title="级别上限")
+    initial_difficulty: Optional[float] = Field(None, title="初始难度")
 
-    level1_brain: Optional[str] = Field(None, title="一级脑能力")
-    level2_brain: List[str] = Field(default_factory=list, title="二级脑能力列表")
+    life_interpretation: Optional[str] = Field(None, title="生活解读")
 
-    # 自动把 int 转成 str
-    @field_validator("id", mode="before")
+    min_duration: Optional[int] = Field(None, title="预计最小耗时")
+    max_duration: Optional[int] = Field(None, title="预计最大耗时")
+
+    training_time: Optional[int] = Field(None, title="训练时间")
+
+    # 自动把 id 转为 str
+    @field_validator("task_id", mode="before")
     @classmethod
     def normalize_id(cls, v):
         if v is None:
-            raise ValueError("id 不能为空")
+            raise ValueError("task_id 不能为空")
         return str(v)
-
-    @field_validator("level2_brain", mode="before")
-    @classmethod
-    def normalize_level2_brain(cls, v):
-        """
-        兼容后端返回 str / list / None 的情况
-        """
-        if v is None:
-            return []
-        if isinstance(v, list):
-            return v
-        return [v]
