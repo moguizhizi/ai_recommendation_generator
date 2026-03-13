@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from utils.dataframe_utils import (
+    clean_dataframe,
     drop_empty_rows,
     fill_na_values,
     normalize_columns,
@@ -35,6 +36,8 @@ def preprocess_dataframe(
     - 多值字段拆分（可选）
     - 数值字段转换（可选）
     """
+
+    df = clean_dataframe(df)
 
     df = normalize_columns(df, column_mapping=column_mapping)
 
