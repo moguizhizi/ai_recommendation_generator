@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from app.tasks.csv_sync_manager import start_sync_tasks
+from app.tasks.sync_manager import start_sync_tasks
 from configs.loader import load_config
 from llm.factory import create_llm
 
