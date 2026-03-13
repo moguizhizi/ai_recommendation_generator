@@ -3,6 +3,7 @@
 from typing import Dict, List, Optional
 
 import pandas as pd
+import numpy as np
 
 from utils.logger import get_logger
 
@@ -266,10 +267,22 @@ def fill_na_values(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def safe_get(row, col, default=None):
-    val = row.get(col, default)
 
-    if val is None or pd.isna(val):
+def safe_get(row, col, default=None):
+    """
+    安全读取 DataFrame 字段
+    """
+
+    val = row.get(col)
+
+    if val is None:
+        return default
+
+    # numpy array / list 不走 isna
+    if isinstance(val, (list, tuple, np.ndarray)):
+        return val
+
+    if pd.isna(val):
         return default
 
     return val

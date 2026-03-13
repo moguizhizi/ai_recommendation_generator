@@ -57,6 +57,8 @@ def fetch_task_info(config: Dict[str, Any]) -> Dict[str, Any]:
 
         tasks.append(task)
 
+    return {"tasks": tasks}
+
 
 def _parse_task(t: dict) -> Task | None:
     """安全解析 Task"""
