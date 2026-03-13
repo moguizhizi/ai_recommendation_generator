@@ -15,7 +15,6 @@ project_root/
 │   │   ├── plan_rule_engine.py    # 🧩 训练方案规则引擎（用户类型判定 / 模块策略 / 难度规则）
 │   │   ├── task_processor.py      # 🧠 外部 taskinfo 的本地加工处理（清洗 / 过滤 / 结构转换）
 │   │   ├── modules_processor.py   # 🧩 训练模块拼装与加工（模块选取 / 排序 / 难度衔接 / 个性化推荐）
-│   │   ├── user_processor.py      # 👤 用户信息处理模块（用户 profile 清洗 / 标准化 / 特征加工）
 │   │   ├── auth_service.py        # Key / Token 校验
 │   │   ├── rate_limit_service.py  # 限流 / 配额
 │   │   └── usage_service.py       # 计量 / 计费
@@ -80,8 +79,12 @@ project_root/
 │   └── loader.py                  # load_config()
 │
 ├── data/                          # 📂 项目数据目录（用于存放原始数据、外部数据及中间处理结果）
-│   └── external/                  # 外部来源的数据（其他系统或共享存储同步的数据）
-│       └── raw/                   # 原始数据层（未经处理的数据，如 CSV、Excel 等）
+│   ├── external/                  # 外部来源的数据（其他系统或共享存储同步的数据）
+│   │   └── raw/                   # 原始数据层（未经处理的数据，如 CSV、Excel 等）
+│   │
+│   └── internal/                  # 🏠 项目内部数据（系统运行过程中产生或使用的数据）
+│       ├── raw/                   # 内部原始数据（内部采集或同步但未处理的数据）
+│       └── processed/             # 内部处理后的数据（清洗 / 特征加工 / 中间结果数据）
 │
 ├── migrations/                    # 🧬 数据库迁移（Alembic）
 ├── scripts/                       # 🛠️ 启动 / 运维脚本
