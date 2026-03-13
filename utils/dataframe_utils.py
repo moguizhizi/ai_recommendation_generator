@@ -84,6 +84,7 @@ def clean_dataframe(
 
     df = (
         df.fillna("")
+        .replace(r"^\\N$", "", regex=True)
         .astype(str)
         .apply(lambda col: col.str.strip())
         .replace(r"\s*_\s*", "_", regex=True)
