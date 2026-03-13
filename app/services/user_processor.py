@@ -6,6 +6,7 @@ from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
     UserTrainingColumnName,
 )
+from app.core.constants import Level1BrainDomain
 from utils.dataframe_utils import ColumnAccessor, safe_get
 
 
@@ -52,22 +53,32 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         "patient_code": safe_get(user_row, cols.patient_code),
         "disease_tag": safe_get(user_row, cols.disease),
         "latest_level1_scores": {
-            "memory": safe_get(user_row, cols.latest_memory),
-            "exec": safe_get(user_row, cols.latest_executive),
-            "attention": safe_get(user_row, cols.latest_attention),
-            "perception": safe_get(user_row, cols.latest_perception),
+            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.latest_memory),
+            Level1BrainDomain.EXECUTIVE.value: safe_get(
+                user_row, cols.latest_executive
+            ),
+            Level1BrainDomain.ATTENTION.value: safe_get(
+                user_row, cols.latest_attention
+            ),
+            Level1BrainDomain.PERCEPTION.value: safe_get(
+                user_row, cols.latest_perception
+            ),
         },
         "week1_level1_scores": {
-            "memory": safe_get(user_row, cols.week1_memory),
-            "exec": safe_get(user_row, cols.week1_executive),
-            "attention": safe_get(user_row, cols.week1_attention),
-            "perception": safe_get(user_row, cols.week1_perception),
+            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.week1_memory),
+            Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.week1_executive),
+            Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.week1_attention),
+            Level1BrainDomain.PERCEPTION.value: safe_get(
+                user_row, cols.week1_perception
+            ),
         },
         "week2_level1_scores": {
-            "memory": safe_get(user_row, cols.week2_memory),
-            "exec": safe_get(user_row, cols.week2_executive),
-            "attention": safe_get(user_row, cols.week2_attention),
-            "perception": safe_get(user_row, cols.week2_perception),
+            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.week2_memory),
+            Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.week2_executive),
+            Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.week2_attention),
+            Level1BrainDomain.PERCEPTION.value: safe_get(
+                user_row, cols.week2_perception
+            ),
         },
         "last_day_task": safe_get(user_row, cols.last_day_task),
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
