@@ -107,7 +107,7 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
 
     logger.debug(
         f"[ENRICH] total missed tasks processed: "
-        f"{len(missed_task_infos)}/{len(missed_tasks) if missed_tasks else 0}"
+        f"{len(missed_task_infos)}/{len(missed_tasks) if len(missed_tasks) else 0}"
     )
 
     # --- 3️⃣ 清理旧字段 ---
