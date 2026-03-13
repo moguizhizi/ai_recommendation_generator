@@ -31,7 +31,7 @@ csv_to_parquet:
 
   interval_seconds: 300
 
-  files:
+  raw_files:
 
     - csv: data/external/raw/cognitive_l1/alg_cogtrain_brainscore_task_child.csv
       parquet: data/internal/raw/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
@@ -111,3 +111,15 @@ columns:
     - 注意控制
     - 最后一天训练任务
     - 最近七天未训练任务
+
+raw_to_processed:
+
+  alg_cogtrain_brainscore_task_child:
+
+    raw: data/internal/raw/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
+    processed: data/internal/processed/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
+
+  alg_training_task_child:
+
+    raw: data/internal/raw/cognitive_l1/alg_training_task_child.parquet
+    processed: data/internal/processed/cognitive_l1/alg_training_task_child.parquet

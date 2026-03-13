@@ -12,7 +12,7 @@ def start_csv_sync_tasks(config):
 
     interval = task_config.get("interval_seconds", 300)
 
-    for item in task_config.get("files", []):
+    for item in task_config.get("raw_files", []):
 
         asyncio.create_task(
             csv_to_parquet_job(
