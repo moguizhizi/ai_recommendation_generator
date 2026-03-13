@@ -1,4 +1,4 @@
-# src/utils/dataframe_utils.py
+# utils/dataframe_utils.py
 
 from typing import Dict, List, Optional
 
@@ -7,6 +7,20 @@ import pandas as pd
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+class ColumnAccessor:
+    """
+    DataFrame column accessor based on Enum + column mapping
+    """
+
+    def __init__(self, mapping, enum_cls):
+        self._cols = {e.name.lower(): mapping[e.value] for e in enum_cls}
+
+    def __getattr__(self, item):
+        if item not in self._cols:
+            raise AttributeError(f"Column '{item}' not defined")
+        return self._cols[item]
 
 
 def normalize_multilabel_series(series: pd.Series) -> pd.Series:
