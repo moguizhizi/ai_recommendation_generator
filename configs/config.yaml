@@ -123,3 +123,7 @@ raw_to_processed:
 
     raw: data/internal/raw/cognitive_l1/alg_training_task_child.parquet
     processed: data/internal/processed/cognitive_l1/alg_training_task_child.parquet
+
+task:
+  user_brain_score: data/internal/processed/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
+  training_task: data/internal/processed/cognitive_l1/alg_training_task_child.parquet

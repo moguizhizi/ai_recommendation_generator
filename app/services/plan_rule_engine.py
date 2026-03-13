@@ -1,4 +1,5 @@
 # app/services/plan_rule_engine.py
+import random
 from app.core.constants import ModuleName, UserType, ScoreThreshold
 from typing import Dict, List, Tuple
 from collections import defaultdict
@@ -60,41 +61,68 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
     enriched_profile = dict(profile)  # 浅拷贝
 
     # --- 1️⃣ last_task -> last_task_info ---
-    last_task_info = None
-    last_task = profile.get("last_task")
-    if last_task:
-        task_id = last_task.get("id")
+    last_day_task_info = None
+    last_day_task = profile.get("last_day_task")
+
+    if last_day_task:
+
+        # 随机选一个任务
+        task_str = random.choice(last_day_task)
+
+        # 解析 task_id
+        task_id = task_str.split("_", 1)[0]
+
         task_obj = task_index.get(task_id)
+
         if task_obj:
-            last_task_info = task_obj
+            last_day_task_info = task_obj
             logger.debug(f"[ENRICH] last_task id={task_id} mapped to Task object")
         else:
             logger.debug(f"[ENRICH] last_task id={task_id} not found in task_index")
+
     else:
         logger.debug("[ENRICH] no last_task found in profile")
 
     # --- 2️⃣ weekly_missed_tasks -> weekly_missed_task_infos ---
     missed_task_infos: List[Task] = []
-    missed_tasks = profile.get("weekly_missed_tasks", [])
-    for missed in missed_tasks:
-        task_id = missed.get("id")
-        task_obj = task_index.get(task_id)
-        if task_obj:
-            missed_task_infos.append(task_obj)
-            logger.debug(f"[ENRICH] missed_task id={task_id} mapped to Task object")
-        else:
-            logger.debug(f"[ENRICH] missed_task id={task_id} not found in task_index")
+    missed_tasks = profile.get("weekly_missed_tasks")
+
+    if isinstance(missed_tasks, list) and missed_tasks:
+
+        for task_str in missed_tasks:
+
+            if isinstance(task_str, str) and "_" in task_str:
+
+                task_id = task_str.split("_", 1)[0]
+                task_obj = task_index.get(task_id)
+
+                if task_obj:
+                    missed_task_infos.append(task_obj)
+                    logger.debug(
+                        f"[ENRICH] missed_task id={task_id} mapped to Task object"
+                    )
+                else:
+                    logger.debug(
+                        f"[ENRICH] missed_task id={task_id} not found in task_index"
+                    )
+
+            else:
+                logger.warning(f"[ENRICH] invalid missed_task format: {task_str}")
+
+    else:
+        logger.debug("[ENRICH] no weekly_missed_tasks found in profile")
 
     logger.debug(
-        f"[ENRICH] total missed tasks processed: {len(missed_task_infos)}/{len(missed_tasks)}"
+        f"[ENRICH] total missed tasks processed: "
+        f"{len(missed_task_infos)}/{len(missed_tasks) if missed_tasks else 0}"
     )
 
     # --- 3️⃣ 清理旧字段 ---
-    enriched_profile.pop("last_task", None)
+    enriched_profile.pop("last_day_task", None)
     enriched_profile.pop("weekly_missed_tasks", None)
 
     # --- 4️⃣ 写入增强后的字段 ---
-    enriched_profile["last_task_info"] = last_task_info
+    enriched_profile["last_day_task_info"] = last_day_task_info
     enriched_profile["weekly_missed_task_infos"] = missed_task_infos
 
     logger.debug(
@@ -116,7 +144,7 @@ def enrich_profile_with_user_type(profile: dict) -> dict:
        则说明所有一级脑能力数值都 < ADVANTAGE_LINE（如 90）
     """
 
-    level1_scores = profile.get("level1_scores", {})
+    level1_scores = profile.get("latest_level1_scores", {})
     level1_values = [v for v in level1_scores.values() if isinstance(v, (int, float))]
 
     # 默认值：蓄力成长型
@@ -163,7 +191,7 @@ def build_user_modules_by_threshold(
     llm: BaseLLM,
 ) -> List[TrainingModule]:
 
-    level1_scores: Dict[str, int] = enriched_profile.get("level1_scores", {})
+    level1_scores: Dict[str, int] = enriched_profile.get("latest_level1_scores", {})
     weekly_missed_task_infos: List[Task] = enriched_profile.get(
         "weekly_missed_task_infos", []
     )
@@ -493,7 +521,7 @@ def simple_predict(score: float) -> float:
 def build_score_prediction(
     profile: dict, fixed_templates: dict, model_manager: ModelManager
 ) -> ScorePrediction:
-    level1_scores = profile.get("level1_scores", {})
+    level1_scores = profile.get("latest_level1_scores", {})
 
     def build_dim(key: str) -> DimensionScorePrediction:
         historical = float(level1_scores.get(key, 0))
