@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from app.data.datasets.cognitive_l1_dataset import load_and_preprocess_dataset
+from app.services.task_processor import build_task_repository
 from utils.csv_utils import csv_to_parquet
 from utils.logger import get_logger
 
@@ -53,5 +54,43 @@ async def csv_to_parquet_job(
 
         except Exception:
             logger.exception("CSV -> Parquet conversion failed")
+
+        await asyncio.sleep(interval_seconds)
+
+
+async def wait_for_parquet(config, check_interval: int = 5):
+    """
+    等待 parquet 文件准备好
+    """
+
+    task_config = config.get("csv_to_parquet", {})
+    parquet_files = [item["parquet"] for item in task_config.get("raw_files", [])]
+
+    while True:
+
+        missing_files = [p for p in parquet_files if not Path(p).exists()]
+
+        if not missing_files:
+            return
+
+        logger.info(
+            "Waiting for parquet files: %s",
+            ", ".join(missing_files),
+        )
+
+        await asyncio.sleep(check_interval)
+
+
+async def task_repository_job(config, interval_seconds):
+
+    while True:
+
+        # 等待 parquet 文件生成
+        await wait_for_parquet(config)
+
+        # 构建 task repository
+        build_task_repository(config)
+
+        logger.info("Task repository rebuilt")
 
         await asyncio.sleep(interval_seconds)
