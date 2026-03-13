@@ -15,27 +15,7 @@ logger = get_logger(__name__)
 
 
 def build_level2_to_level1_map(task_repo: Dict) -> Dict[str, str]:
-    """
-    根据 task_repo 构建 level2_brain -> level1_brain 映射
-    """
-    level2_to_level1: Dict[str, str] = {}
-    task_list = task_repo.get("task_list", [])
-
-    for task in task_list:
-        level1 = task.level1_brain
-        level2_list = task.level2_brain  # 已经是 List[str]
-
-        if not level1 or not level2_list:
-            continue
-
-        for level2 in level2_list:
-            if level2 not in level2_to_level1:
-                level2_to_level1[level2] = level1
-
-    logger.debug(
-        f"[LEVEL2_TO_LEVEL1_MAP] total_tasks={len(task_list)} total_mappings={len(level2_to_level1)}"
-    )
-    return level2_to_level1
+    return {}
 
 
 def fetch_task_info(config: Dict[str, Any]) -> Dict[str, Any]:
