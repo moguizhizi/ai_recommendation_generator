@@ -1,6 +1,7 @@
 # app/controllers/chat_controller.py
 
 import time
+from typing import Any, Dict
 from fastapi import APIRouter, Request
 from app.schemas.chat import AIRecPlanRequest, AIRecPlanResponse
 from app.services.chat_service import generate_ai_plan
@@ -19,6 +20,7 @@ def chat_api(req: AIRecPlanRequest, request: Request):
 
     llm: BaseLLM = request.app.state.llm
     score_model_manager: ModelManager = request.app.state.model_manager
+    config: Dict[str, Any] = request.app.state.config
 
     start_time = time.time()
 
@@ -27,7 +29,9 @@ def chat_api(req: AIRecPlanRequest, request: Request):
     )
 
     try:
-        result = generate_ai_plan(req, llm, model_manager=score_model_manager)
+        result = generate_ai_plan(
+            req, llm, model_manager=score_model_manager, config=config
+        )
 
         duration = round(time.time() - start_time, 3)
 
