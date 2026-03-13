@@ -1,10 +1,15 @@
 # app/services/task_processor.py
 
-from typing import Dict, List
+from typing import Dict, List, Any
 from collections import defaultdict
 
+from app.core.cognitive_l1.constants import CognitiveL1DatasetName, TaskColumnName
 from app.schemas.common import Task
+from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
+import pandas as pd
+import json
+
 
 logger = get_logger(__name__)
 
@@ -33,56 +38,87 @@ def build_level2_to_level1_map(task_repo: Dict) -> Dict[str, str]:
     return level2_to_level1
 
 
-def build_task_repository(raw_task_info: dict) -> dict:
+def fetch_task_info(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    从 parquet 构建 task 数据结构
+    """
+
+    # 1 读取 parquet
+    task_path = config["task"]["training_task"]
+    df = pd.read_parquet(task_path)
+
+    # 2 读取 column mapping
+    with open(
+        config["column_mapping"][CognitiveL1DatasetName.TRAINING_TASK.value]
+    ) as f:
+        COLUMN_MAPPING = json.load(f)
+
+    cols = ColumnAccessor(COLUMN_MAPPING, TaskColumnName)
+
+    tasks = []
+
+    # 3 遍历 dataframe
+    for _, row in df.iterrows():
+
+        task = {
+            "task_id": safe_get(row, cols.task_id),
+            "task_name": safe_get(row, cols.task_name),
+            "paradigm": safe_get(row, cols.paradigm),
+            "cognitive_domain": safe_get(row, cols.cognitive_domain),
+            "difficulty": safe_get(row, cols.difficulty),
+            "start_level": safe_get(row, cols.start_level),
+            "level_max": safe_get(row, cols.level_max),
+            "initial_difficulty": safe_get(row, cols.initial_difficulty),
+            "life_interpretation": safe_get(row, cols.life_interpretation),
+            "min_duration": safe_get(row, cols.min_duration),
+            "max_duration": safe_get(row, cols.max_duration),
+            "training_time": safe_get(row, cols.training_time),
+        }
+
+        tasks.append(task)
+
+
+def _parse_task(t: dict) -> Task | None:
+    """安全解析 Task"""
+    try:
+        return Task(**t)
+    except Exception as e:
+        logger.warning(f"[TASK_PARSE_ERROR] raw_task={t} error={e}")
+        return None
+
+
+def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     构建系统级 Task 仓库（与用户无关）
     """
+
+    raw_task_info = fetch_task_info(config=config)
     raw_tasks = raw_task_info.get("tasks", [])
-    task_list: List[Task] = []
 
-    for t in raw_tasks:
-        try:
-            task_list.append(
-                Task(
-                    id=str(t.get("id")),  # 确保 id 是 str
-                    name=t.get("name"),
-                    difficulty=t.get("difficulty"),
-                    life_desc=t.get("life_desc"),
-                    paradigm=t.get("paradigm"),
-                    duration_min=t.get("duration_min"),
-                    level1_brain=t.get("level1_brain"),
-                    level2_brain=[
-                        x.strip()
-                        for x in (t.get("level2_brain") or "").split(",")
-                        if x.strip()
-                    ],
-                )
-            )
-        except Exception as e:
-            logger.warning(f"[TASK_PARSE_ERROR] raw_task={t} error={e}")
+    # 1 解析 Task
+    task_list: List[Task] = [
+        task for t in raw_tasks if (task := _parse_task(t)) is not None
+    ]
 
-    task_index = {t.id: t for t in task_list if t.id is not None}
+    # 2 构建 task_id 索引
+    task_index: Dict[str, Task] = {t.task_id: t for t in task_list if t.task_id}
 
-    level1_grouped = defaultdict(list)
-    level2_grouped = defaultdict(list)
+    # 3 按一级脑能力分组
+    level1_grouped: Dict[str, List[Task]] = defaultdict(list)
 
     for task in task_list:
-        if task.level1_brain:
-            level1_grouped[task.level1_brain].append(task)
-
-        for level2 in task.level2_brain:
-            level2_grouped[level2].append(task)
+        if task.cognitive_domain:
+            level1_grouped[task.cognitive_domain].append(task)
 
     logger.debug(
-        f"[TASK_REPO_BUILT] total_raw={len(raw_tasks)} "
-        f"valid_tasks={len(task_list)} "
-        f"level1_keys={len(level1_grouped)} "
-        f"level2_keys={len(level2_grouped)}"
+        "[TASK_REPO_BUILT] total_raw=%s valid_tasks=%s level1_keys=%s",
+        len(raw_tasks),
+        len(task_list),
+        len(level1_grouped),
     )
 
     return {
         "task_list": task_list,
         "task_index": task_index,
         "level1_grouped_tasks": dict(level1_grouped),
-        "level2_grouped_tasks": dict(level2_grouped),
     }
