@@ -1,120 +1,76 @@
 # app/clients/user_profile_client.py
-import requests
-from typing import Dict
+import pandas as pd
+import json
+
+from app.core.cognitive_l1.constants import (
+    CognitiveL1DatasetName,
+    UserTrainingColumnName,
+)
+from utils.dataframe_utils import ColumnAccessor, safe_get
 
 
-# def fetch_user_profile(user_id: str, patient_code: str) -> Dict:
-#     """
-#     调用用户画像 / 训练数据服务，获取：
-#     - 一级脑能力分数
-#     - 二级脑能力分数
-#     - 行为画像（最近任务 / 漏训任务）
-#     - 返回 user_id 和 patient_code
-#     """
-#     url = "http://user-profile-service/api/v1/profile"
-#     params = {"user_id": user_id, "patient_code": patient_code}
-
-#     resp = requests.get(url, params=params, timeout=3)
-#     resp.raise_for_status()
-#     data = resp.json()
-
-#     # --- 最后一次训练任务 ---
-#     last_task = data.get("last_task", {})
-#     last_task_info = (
-#         {"id": last_task.get("id"), "name": last_task.get("name")}
-#         if last_task
-#         else None
-#     )
-
-#     # --- 过去一周未训练任务 ---
-#     missed_tasks = [
-#         {"id": t.get("id"), "name": t.get("name")}
-#         for t in data.get("weekly_missed_tasks", [])
-#     ]
-
-#     # --- 一级脑能力 ---
-#     level1_scores = {
-#         "memory": data.get("memory_score", 0),
-#         "exec": data.get("exec_score", 0),
-#         "attention": data.get("attention_score", 0),
-#         "perception": data.get("perception_score", 0),
-#     }
-
-#     # --- 二级脑能力 ---
-#     level2_scores = {
-#         "memory": {
-#             "working_memory": data.get("memory_working_score", 0),
-#             "spatial_memory": data.get("memory_spatial_score", 0),
-#         },
-#         "exec": {
-#             "conflict_inhibition": data.get("exec_conflict_score", 0),
-#             "interference_control": data.get("exec_interfere_score", 0),
-#         },
-#         "attention": {
-#             "alerting": data.get("attention_alert_score", 0),
-#             "sustained": data.get("attention_sustain_score", 0),
-#         },
-#         "perception": {"spatial_perception": data.get("perception_spatial_score", 0)},
-#     }
-
-#     return {
-#         # --- 基础信息 ---
-#         "user_id": user_id,
-#         "patient_code": patient_code,
-#         "train_days": data.get("train_days", 0),
-#         "disease_tag": data.get("disease_tag", ""),
-#         # --- 能力画像 ---
-#         "level1_scores": level1_scores,
-#         "level2_scores": level2_scores,
-#         # --- 行为画像 ---
-#         "last_task": last_task_info,
-#         "weekly_missed_tasks": missed_tasks,
-#     }
+import pandas as pd
+import json
+from typing import Dict, Any
 
 
-def fetch_user_profile(user_id: str, patient_code: str) -> Dict:
+def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) -> Dict:
     """
-    Mock 用户画像数据（用于本地调试）
+    从 patient 数据中读取用户画像
     """
 
-    return {
-        # --- 基础画像 ---
-        "user_id": user_id,
-        "patient_code": patient_code,
-        "train_days": 28,
-        "disease_tag": "mild_cognitive_impairment",
-        # --- 一级脑能力 ---
-        "level1_scores": {
-            "memory": 62,
-            "exec": 55,
-            "attention": 70,
-            "perception": 68,
+    patient_path = config["task"]["user_brain_score"]
+
+    df = pd.read_parquet(patient_path)
+
+    with open(
+        config["column_mapping"][CognitiveL1DatasetName.USER_BRAIN_SCORE.value]
+    ) as f:
+        COLUMN_MAPPING = json.load(f)
+
+    cols = ColumnAccessor(COLUMN_MAPPING, UserTrainingColumnName)
+
+    # 定位用户
+    user_row = None
+
+    if user_id:
+        user_df = df[df[cols.user_id] == user_id]
+        if not user_df.empty:
+            user_row = user_df.iloc[0]
+
+    if user_row is None and patient_code:
+        user_df = df[df[cols.patient_code] == patient_code]
+        if not user_df.empty:
+            user_row = user_df.iloc[0]
+
+    if user_row is None:
+        raise ValueError("User not found in patient data")
+
+    # 构建画像
+    profile = {
+        "user_id": safe_get(user_row, cols.user_id),
+        "patient_code": safe_get(user_row, cols.patient_code),
+        "disease_tag": safe_get(user_row, cols.disease),
+        "latest_level1_scores": {
+            "memory": safe_get(user_row, cols.latest_memory),
+            "exec": safe_get(user_row, cols.latest_executive),
+            "attention": safe_get(user_row, cols.latest_attention),
+            "perception": safe_get(user_row, cols.latest_perception),
         },
-        # --- 二级脑能力 ---
-        "level2_scores": {
-            "memory": {
-                "working_memory": 58,
-                "spatial_memory": 65,
-            },
-            "exec": {
-                "conflict_inhibition": 50,
-                "interference_control": 60,
-            },
-            "attention": {
-                "alerting": 72,
-                "sustained": 66,
-            },
-            "perception": {
-                "spatial_perception": 69,
-            },
+        "week1_level1_scores": {
+            "memory": safe_get(user_row, cols.week1_memory),
+            "exec": safe_get(user_row, cols.week1_executive),
+            "attention": safe_get(user_row, cols.week1_attention),
+            "perception": safe_get(user_row, cols.week1_perception),
         },
-        # --- 行为画像 ---
-        "last_task": {
-            "id": "task_101",
-            "name": "数字记忆挑战",
+        "week2_level1_scores": {
+            "memory": safe_get(user_row, cols.week2_memory),
+            "exec": safe_get(user_row, cols.week2_executive),
+            "attention": safe_get(user_row, cols.week2_attention),
+            "perception": safe_get(user_row, cols.week2_perception),
         },
-        "weekly_missed_tasks": [
-            {"id": "task_205", "name": "空间旋转训练"},
-            {"id": "task_310", "name": "冲突抑制训练"},
-        ],
+        "last_day_task": safe_get(user_row, cols.last_day_task),
+        "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
     }
+
+    return profile

@@ -265,3 +265,11 @@ def fill_na_values(df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"Keeping NA values as NaN | total_na_cells={na_count}")
 
     return df
+
+def safe_get(row, col, default=None):
+    val = row.get(col, default)
+
+    if val is None or pd.isna(val):
+        return default
+
+    return val
