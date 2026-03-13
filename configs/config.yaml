@@ -29,7 +29,7 @@ runtime:
 
 csv_to_parquet:
 
-  interval_seconds: 300
+  interval_seconds: 86400
 
   raw_files:
 
