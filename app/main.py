@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from app.tasks.csv_sync_manager import start_csv_sync_tasks
+from app.tasks.csv_sync_manager import start_sync_tasks
 from configs.loader import load_config
 from llm.factory import create_llm
 
@@ -27,6 +27,8 @@ async def lifespan(app: FastAPI):
     try:
         config = load_config()
 
+        app.state.config = config
+
         app.state.llm = create_llm(config)
 
         model_manager = ModelManager()
@@ -34,7 +36,7 @@ async def lifespan(app: FastAPI):
 
         app.state.model_manager = model_manager
 
-        start_csv_sync_tasks(config)
+        start_sync_tasks(config)
 
     except Exception as e:
         logger.exception("Failed to initialize services")
