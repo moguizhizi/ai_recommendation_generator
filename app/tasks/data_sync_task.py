@@ -8,6 +8,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict
 
+from app.data.datasets.cognitive_l1_dataset import load_and_preprocess_dataset
 from utils.csv_utils import csv_to_parquet
 from utils.logger import get_logger
 
@@ -36,7 +37,7 @@ async def csv_to_parquet_job(
     while True:
         try:
             if csv_path.exists():
-                logger.info("Start converting CSV -> Parquet")
+                logger.debug("Start converting CSV -> Parquet")
 
                 csv_to_parquet(
                     csv_path=str(csv_path),
@@ -44,7 +45,11 @@ async def csv_to_parquet_job(
                     config=config,
                 )
 
-                logger.info("CSV converted to Parquet successfully")
+                logger.debug("CSV converted to Parquet successfully")
+
+                load_and_preprocess_dataset(
+                    config=config, parquet_name=Path(parquet_path).stem
+                )
 
         except Exception:
             logger.exception("CSV -> Parquet conversion failed")
