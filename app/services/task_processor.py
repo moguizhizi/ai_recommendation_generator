@@ -4,6 +4,7 @@ from typing import Dict, List, Any
 from collections import defaultdict
 
 from app.core.cognitive_l1.constants import CognitiveL1DatasetName, TaskColumnName
+from app.core.constants import Level1BrainDomain
 from app.schemas.common import Task
 from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
@@ -82,15 +83,33 @@ def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
         task for t in raw_tasks if (task := _parse_task(t)) is not None
     ]
 
-    # 2 构建 task_id 索引
+    # 2 cognitive_domain 校验
+    VALID_DOMAINS = {d.value for d in Level1BrainDomain}
+
+    filtered_tasks: List[Task] = []
+
+    for task in task_list:
+
+        if task.cognitive_domain not in VALID_DOMAINS:
+            logger.warning(
+                "[TASK_INVALID_DOMAIN] task_id=%s domain=%s",
+                task.task_id,
+                task.cognitive_domain,
+            )
+            continue
+
+        filtered_tasks.append(task)
+
+    task_list = filtered_tasks
+
+    # 3 task_id 索引
     task_index: Dict[str, Task] = {t.task_id: t for t in task_list if t.task_id}
 
-    # 3 按一级脑能力分组
+    # 4 按一级脑能力分组
     level1_grouped: Dict[str, List[Task]] = defaultdict(list)
 
     for task in task_list:
-        if task.cognitive_domain:
-            level1_grouped[task.cognitive_domain].append(task)
+        level1_grouped[task.cognitive_domain].append(task)
 
     logger.debug(
         "[TASK_REPO_BUILT] total_raw=%s valid_tasks=%s level1_keys=%s",
