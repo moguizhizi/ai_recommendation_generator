@@ -22,6 +22,17 @@ class ModuleName(str, Enum):
     STEP_UP = "阶梯式提升模块"
 
 
+class Level1BrainDomain(str, Enum):
+    """
+    一级脑能力（Level1 Cognitive Domain）
+    """
+
+    PERCEPTION = "感知觉"
+    ATTENTION = "注意力"
+    MEMORY = "记忆力"
+    EXECUTIVE = "执行功能"
+
+
 class ScoreThreshold:
     ADVANTAGE_LINE = 100
     POTENTIAL_LINE = 90
