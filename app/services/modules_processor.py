@@ -15,19 +15,14 @@ def get_missed_tasks_grouped_by_paradigm(
     """
     按范式分组漏训任务
     - level1_key: 一级脑能力 key
-    - level2_keys: 可选，限定二级脑能力（SPECIAL / GROWTH 使用）
+    - level2_keys: 可选
     """
 
     filtered_tasks: List[Task] = []
 
     for task in weekly_missed_task_infos:
-        if task.level1_brain != level1_key:
+        if task.cognitive_domain != level1_key:
             continue
-
-        if level2_keys:
-            # task.level2_brain: List[str]
-            if not set(task.level2_brain) & set(level2_keys):
-                continue
 
         filtered_tasks.append(task)
 
@@ -76,7 +71,7 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
 
 
 def calc_difficulty(
-    last_task: Optional[Task], paradigm_tasks: Dict[str, List[Task]]
+    last_day_task_info: Optional[Task], paradigm_tasks: Dict[str, List[Task]]
 ) -> str:
     """
     本地规则：根据历史任务难度 + 本次推荐任务难度区间，生成训练难度文案
@@ -90,10 +85,12 @@ def calc_difficulty(
 
     DEFAULT = "当前能力层级+0.5~1级"
 
-    if not last_task or not isinstance(last_task.difficulty, (int, float)):
+    if not last_day_task_info or not isinstance(
+        last_day_task_info.difficulty, (int, float)
+    ):
         return DEFAULT
 
-    base = float(last_task.difficulty)
+    base = float(last_day_task_info.difficulty)
 
     diffs: List[float] = []
 
@@ -134,8 +131,8 @@ def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
 
     for tasks in paradigm_tasks.values():
         for task in tasks:
-            if isinstance(task.duration_min, (int, float)) and task.duration_min > 0:
-                durations.append(int(task.duration_min))
+            if isinstance(task.max_duration, (int, float)) and task.max_duration > 0:
+                durations.append(int(task.max_duration))
 
     # --- 无有效时长兜底 ---
     if not durations:
@@ -161,8 +158,10 @@ def generate_goal_by_llm(paradigm_tasks: Dict[str, List[Task]], llm: BaseLLM) ->
 
     for paradigm, tasks in paradigm_tasks.items():
         for task in tasks:
-            if task.life_desc:
-                life_desc_list.append(f"- [{paradigm}] {task.name}: {task.life_desc}")
+            if task.life_interpretation:
+                life_desc_list.append(
+                    f"- [{paradigm}] {task.task_name}: {task.life_interpretation}"
+                )
 
     # 如果没有可用描述，直接返回默认值
     if not life_desc_list:

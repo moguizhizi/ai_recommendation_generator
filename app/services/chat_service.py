@@ -1,6 +1,6 @@
 # app/services/chat_service.py
-from app.clients.task_client import fetch_task_info
-from app.clients.user_profile_client import fetch_user_profile
+from typing import Any, Dict
+
 from app.core.constants import UserType
 from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse
 from app.services.plan_rule_engine import (
@@ -16,8 +16,9 @@ from app.services.plan_rule_engine import (
 )
 from app.services.task_processor import (
     build_level2_to_level1_map,
-    build_task_repository,
+    get_task_repository,
 )
+from app.services.user_processor import fetch_user_profile
 from llm.base import BaseLLM
 
 from utils.logger import get_logger
@@ -35,12 +36,14 @@ USER_TYPE_MODULE_BUILDER = {
 
 
 def generate_ai_plan(
-    req: AIRecPlanRequest, llm: BaseLLM, model_manager: ModelManager
+    req: AIRecPlanRequest,
+    llm: BaseLLM,
+    model_manager: ModelManager,
+    config: Dict[str, Any],
 ) -> AIRecPlanResponse:
     try:
-        profile = fetch_user_profile(req.user_id, req.patient_code)
-        raw_task_info = fetch_task_info()
-        task_repo = build_task_repository(raw_task_info)
+        profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
+        task_repo = get_task_repository(config=config)
 
         profile = enrich_user_profile_with_tasks(profile, task_repo)
         profile = enrich_profile_with_user_type(profile)
