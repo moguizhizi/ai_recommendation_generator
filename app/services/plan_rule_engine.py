@@ -25,13 +25,6 @@ from models.model_factory import ModelManager
 
 logger = get_logger(__name__)
 
-ABILITY_NAME_MAP = {
-    "memory": "记忆力",
-    "exec": "执行控制",
-    "attention": "注意力",
-    "perception": "感知觉",
-}
-
 # 用户类型 -> 模块映射（集中管理）
 USER_TYPE_MODULE_MAP = {
     UserType.ADVANTAGE: [
@@ -64,7 +57,7 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
     last_day_task_info = None
     last_day_task = profile.get("last_day_task")
 
-    if last_day_task:
+    if len(last_day_task) > 0:
 
         # 随机选一个任务
         task_str = random.choice(last_day_task)
@@ -195,7 +188,7 @@ def build_user_modules_by_threshold(
     weekly_missed_task_infos: List[Task] = enriched_profile.get(
         "weekly_missed_task_infos", []
     )
-    last_task: Task | None = enriched_profile.get("last_task_info")
+    last_day_task_info: Task | None = enriched_profile.get("last_day_task_info")
     user_type: UserType = enriched_profile.get("user_type", UserType.GROWTH)
     user_id = enriched_profile.get("user_id", "unknown")
 
@@ -255,7 +248,7 @@ def build_user_modules_by_threshold(
         suffix: str,
     ) -> TrainingItem | None:
 
-        ability_name_cn = ABILITY_NAME_MAP.get(level1_key, level1_key)
+        ability_name_cn = level1_key
 
         paradigm_tasks = get_missed_tasks_grouped_by_paradigm(
             level1_key,
@@ -272,7 +265,7 @@ def build_user_modules_by_threshold(
         item = TrainingItem(
             name=f"{ability_name_cn}{suffix}",
             tasks=fetch_tasks_by_ability(paradigm_tasks),
-            difficulty=calc_difficulty(last_task, paradigm_tasks),
+            difficulty=calc_difficulty(last_day_task_info, paradigm_tasks),
             frequency=fetch_frequency(paradigm_tasks),
             goal=generate_goal_by_llm(paradigm_tasks, llm),
             description="低压力、高成功体验",
