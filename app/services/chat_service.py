@@ -1,6 +1,8 @@
 # app/services/chat_service.py
 from typing import Any, Dict
 
+from fastapi import HTTPException
+
 from app.core.constants import UserType
 from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse
 from app.services.plan_rule_engine import (
@@ -41,48 +43,40 @@ def generate_ai_plan(
     model_manager: ModelManager,
     config: Dict[str, Any],
 ) -> AIRecPlanResponse:
-    try:
-        profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
-        task_repo = get_task_repository(config=config)
 
-        profile = enrich_user_profile_with_tasks(profile, task_repo)
-        profile = enrich_profile_with_user_type(profile)
+    profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
+    task_repo = get_task_repository(config=config)
 
-        fixed_templates = get_fixed_templates(profile)
-        level2_to_level1 = build_level2_to_level1_map(task_repo)
+    profile = enrich_user_profile_with_tasks(profile, task_repo)
+    profile = enrich_profile_with_user_type(profile)
 
-        user_type: UserType = profile["user_type"]
+    fixed_templates = get_fixed_templates(profile)
+    level2_to_level1 = build_level2_to_level1_map(task_repo)
 
-        module_builder = USER_TYPE_MODULE_BUILDER.get(
-            user_type, build_growth_user_modules
-        )
-        modules = module_builder(profile, level2_to_level1, llm)
+    user_type: UserType = profile["user_type"]
 
-        score_prediction = build_score_prediction(
-            profile, fixed_templates, model_manager
-        )
+    module_builder = USER_TYPE_MODULE_BUILDER.get(user_type, build_growth_user_modules)
+    modules = module_builder(profile, level2_to_level1, llm)
 
-        # 构建核心数据对象
-        plan_data = AIRecPlanData(
-            user_type=user_type,
-            overview=fixed_templates["overview"],
-            training_plan_intro=fixed_templates["training_plan_intro"],
-            modules=modules,
-            score_prediction=score_prediction,
-            home_advice=fixed_templates["home_advice"],
-            tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
-            raw_text="",  # 如果后面接LLM可以填
-        )
+    score_prediction = build_score_prediction(profile, fixed_templates, model_manager)
 
-        # 渲染展示文本
-        display_text = render_plan_text(plan_data)
+    # 构建核心数据对象
+    plan_data = AIRecPlanData(
+        user_type=user_type,
+        overview=fixed_templates["overview"],
+        training_plan_intro=fixed_templates["training_plan_intro"],
+        modules=modules,
+        score_prediction=score_prediction,
+        home_advice=fixed_templates["home_advice"],
+        tracking_and_adjustment=fixed_templates["tracking_and_adjustment"],
+        raw_text="",  # 如果后面接LLM可以填
+    )
 
-        # 返回包装结构
-        return AIRecPlanResponse(
-            data=plan_data,
-            display_text=display_text,
-        )
+    # 渲染展示文本
+    display_text = render_plan_text(plan_data)
 
-    except Exception as e:
-        logger.exception(f"[AI_PLAN_ERROR] user_id={req.user_id} error={str(e)}")
-        raise
+    # 返回包装结构
+    return AIRecPlanResponse(
+        data=plan_data,
+        display_text=display_text,
+    )

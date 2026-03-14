@@ -7,6 +7,8 @@ from app.core.cognitive_l1.constants import (
     UserTrainingColumnName,
 )
 from app.core.constants import Level1BrainDomain
+from app.core.errors.error_codes import ErrorCode
+from app.core.errors.exceptions import BizError
 from utils.dataframe_utils import ColumnAccessor, safe_get
 
 
@@ -45,7 +47,11 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
             user_row = user_df.iloc[0]
 
     if user_row is None:
-        raise ValueError("User not found in patient data")
+        raise BizError(
+            ErrorCode.USER_NOT_FOUND,
+            user_id=user_id,
+            patient_code=patient_code,
+        )
 
     # 构建画像
     profile = {
