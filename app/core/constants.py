@@ -36,3 +36,11 @@ class Level1BrainDomain(str, Enum):
 class ScoreThreshold:
     ADVANTAGE_LINE = 100
     POTENTIAL_LINE = 90
+
+
+LEVEL1_DOMAIN_KEY_MAP = {
+    Level1BrainDomain.PERCEPTION: "perception",
+    Level1BrainDomain.ATTENTION: "attention",
+    Level1BrainDomain.MEMORY: "memory",
+    Level1BrainDomain.EXECUTIVE: "executive_function",
+}

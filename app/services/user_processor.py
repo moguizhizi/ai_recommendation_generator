@@ -90,4 +90,8 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
     }
 
+    from pprint import pprint
+
+    pprint(profile)
+
     return profile
