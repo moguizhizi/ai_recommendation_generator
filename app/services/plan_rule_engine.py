@@ -1,6 +1,13 @@
 # app/services/plan_rule_engine.py
 import random
-from app.core.constants import ModuleName, UserType, ScoreThreshold
+import pandas as pd
+from app.core.constants import (
+    LEVEL1_DOMAIN_KEY_MAP,
+    Level1BrainDomain,
+    ModuleName,
+    UserType,
+    ScoreThreshold,
+)
 from typing import Dict, List, Tuple
 from collections import defaultdict
 from app.core.errors.error_codes import ErrorCode
@@ -521,6 +528,61 @@ def get_fixed_templates(profile: dict) -> dict:
     return templates.get(profile["user_type"], templates[UserType.GROWTH.value])
 
 
+def predict_next_week(model, profile: dict, level1_key: str):
+    """
+    根据 profile 中最近三周一级脑能力分数预测下一周
+    """
+
+    logger.info("Start next-week prediction")
+
+    latest_scores = profile.get("latest_level1_scores", {})
+    week1_scores = profile.get("week1_level1_scores", {})
+    week2_scores = profile.get("week2_level1_scores", {})
+
+    # 取三周数据（顺序：week2 -> week1 -> latest）
+    raw_scores = [
+        week2_scores.get(level1_key),
+        week1_scores.get(level1_key),
+        latest_scores.get(level1_key),
+    ]
+
+    logger.debug(f"Raw scores from profile: {raw_scores}")
+
+    # 过滤 None
+    scores = [s for s in raw_scores if s is not None]
+
+    if len(scores) < 3:
+        logger.warning(f"Insufficient valid scores for prediction: {scores}")
+        return None
+
+    logger.debug(f"Valid scores used for feature construction: {scores}")
+
+    features = {}
+
+    features["lag1"] = scores[-1]
+    features["lag2"] = scores[-2]
+    features["lag3"] = scores[-3]
+
+    features["mean_last3"] = sum(scores) / 3
+    features["std_last3"] = pd.Series(scores).std()
+    features["max_last3"] = max(scores)
+    features["min_last3"] = min(scores)
+
+    features["trend_last3"] = scores[-1] - scores[-3]
+
+    logger.debug(f"Constructed features: {features}")
+
+    X = pd.DataFrame([features])
+
+    logger.debug(f"Feature dataframe for prediction: {X.to_dict(orient='records')}")
+
+    pred = model.predict(X)[0]
+
+    logger.info(f"Prediction result for {level1_key}: {pred}")
+
+    return pred
+
+
 def simple_predict(score: float) -> float:
     if score < 60:
         return score + 5
@@ -535,9 +597,15 @@ def build_score_prediction(
 ) -> ScorePrediction:
     level1_scores = profile.get("latest_level1_scores", {})
 
-    def build_dim(key: str) -> DimensionScorePrediction:
-        historical = float(level1_scores.get(key, 0))
-        predicted = simple_predict(historical)
+    def build_dim(level1_key: str) -> DimensionScorePrediction:
+        historical = float(level1_scores.get(level1_key, 0))
+        predicted = predict_next_week(
+            model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
+            profile=profile,
+            level1_key=level1_key,
+        )
+        if predicted is None or predicted <= historical:
+            predicted = simple_predict(historical)
 
         return DimensionScorePrediction(
             historical_score=historical,
@@ -546,10 +614,10 @@ def build_score_prediction(
 
     return ScorePrediction(
         summary=fixed_templates["score_prediction"],
-        attention=build_dim("注意力"),
-        memory=build_dim("记忆力"),
-        executive_control=build_dim("执行控制"),
-        perception=build_dim("感知觉"),
+        attention=build_dim(Level1BrainDomain.ATTENTION.value),
+        memory=build_dim(Level1BrainDomain.MEMORY.value),
+        executive_control=build_dim(Level1BrainDomain.EXECUTIVE.value),
+        perception=build_dim(Level1BrainDomain.PERCEPTION.value),
     )
 
 
