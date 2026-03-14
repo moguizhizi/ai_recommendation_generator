@@ -53,7 +53,7 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
         paradigm, tasks = random.choice(valid_paradigms)
         picked_tasks = tasks[:2]
 
-        task_names = [t.name for t in picked_tasks if t.name]
+        task_names = [t.task_name for t in picked_tasks if t.task_name]
         if task_names:
             task_str = "、".join(task_names)
             return f"{paradigm}（{task_str}）"
@@ -62,7 +62,7 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
     no_paradigm_tasks = paradigm_tasks.get("no_paradigm", [])
     if no_paradigm_tasks:
         picked_tasks = no_paradigm_tasks[:2]
-        task_names = [t.name for t in picked_tasks if t.name]
+        task_names = [t.task_name for t in picked_tasks if t.task_name]
         if task_names:
             task_str = "、".join(task_names)
             return f"{task_str}等任务"

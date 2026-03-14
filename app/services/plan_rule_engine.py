@@ -3,6 +3,8 @@ import random
 from app.core.constants import ModuleName, UserType, ScoreThreshold
 from typing import Dict, List, Tuple
 from collections import defaultdict
+from app.core.errors.error_codes import ErrorCode
+from app.core.errors.exceptions import BizError
 from app.schemas.chat import (
     AIRecPlanData,
     DimensionScorePrediction,
@@ -71,39 +73,56 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
             last_day_task_info = task_obj
             logger.debug(f"[ENRICH] last_task id={task_id} mapped to Task object")
         else:
-            logger.debug(f"[ENRICH] last_task id={task_id} not found in task_index")
+            raise BizError(
+                ErrorCode.TASK_NOT_FOUND_IN_REPO,
+                user_id=profile.get("user_id", ""),
+                patient_code=profile.get("patient_code", ""),
+                task_id=task_id,
+            )
 
     else:
-        logger.debug("[ENRICH] no last_task found in profile")
+        raise BizError(
+            ErrorCode.MISSING_LAST_TASK,
+            user_id=profile.get("user_id", ""),
+            patient_code=profile.get("patient_code", ""),
+        )
 
     # --- 2️⃣ weekly_missed_tasks -> weekly_missed_task_infos ---
     missed_task_infos: List[Task] = []
     missed_tasks = profile.get("weekly_missed_tasks")
 
-    if isinstance(missed_tasks, list) and missed_tasks:
+    if not isinstance(missed_tasks, list) or not missed_tasks:
+        raise BizError(
+            ErrorCode.MISSING_WEEKLY_MISSED_TASKS,
+            user_id=profile.get("user_id", ""),
+            patient_code=profile.get("patient_code", ""),
+        )
 
-        for task_str in missed_tasks:
+    for task_str in missed_tasks:
 
-            if isinstance(task_str, str) and "_" in task_str:
+        if isinstance(task_str, str) and "_" in task_str:
 
-                task_id = task_str.split("_", 1)[0]
-                task_obj = task_index.get(task_id)
+            task_id = task_str.split("_", 1)[0]
+            task_obj = task_index.get(task_id)
 
-                if task_obj:
-                    missed_task_infos.append(task_obj)
-                    logger.debug(
-                        f"[ENRICH] missed_task id={task_id} mapped to Task object"
-                    )
-                else:
-                    logger.debug(
-                        f"[ENRICH] missed_task id={task_id} not found in task_index"
-                    )
-
+            if task_obj:
+                missed_task_infos.append(task_obj)
+                logger.debug(f"[ENRICH] missed_task id={task_id} mapped to Task object")
             else:
-                logger.warning(f"[ENRICH] invalid missed_task format: {task_str}")
+                logger.warning(
+                    f"[ENRICH] missed_task id={task_id} not found in task_index"
+                )
 
-    else:
-        logger.debug("[ENRICH] no weekly_missed_tasks found in profile")
+        else:
+            logger.warning(f"[ENRICH] invalid missed_task format: {task_str}")
+
+    if not missed_task_infos:
+        # 合并异常处理
+        raise BizError(
+            ErrorCode.MISSING_WEEKLY_MISSED_TASKS,
+            user_id=profile.get("user_id", ""),
+            patient_code=profile.get("patient_code", ""),
+        )
 
     logger.debug(
         f"[ENRICH] total missed tasks processed: "
