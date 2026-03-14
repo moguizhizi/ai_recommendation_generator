@@ -279,11 +279,20 @@ def safe_get(row, col, default=None):
     if val is None:
         return default
 
-    # numpy array / list 不走 isna
-    if isinstance(val, (list, tuple, np.ndarray)):
+    # numpy array -> list
+    if isinstance(val, np.ndarray):
+        return val.tolist()
+
+    # list / tuple 直接返回
+    if isinstance(val, (list, tuple)):
         return val
 
+    # NaN 处理
     if pd.isna(val):
         return default
+
+    # numpy scalar -> python scalar
+    if isinstance(val, np.generic):
+        return val.item()
 
     return val

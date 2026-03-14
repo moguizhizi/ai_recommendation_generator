@@ -118,9 +118,9 @@ def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
     本地接口：根据已匹配的任务列表，生成训练频次文案
 
     规则：
-    - 从 paradigm_tasks 中提取所有 Task.duration_min
+    - 从 paradigm_tasks 中提取所有 Task.max_duration
     - 过滤无效 / 非正数时长
-    - 按时长升序排序
+    - 去重 + 升序排序
     - 组装为：
         - 1 个值 → 每日1次，每次 X 分钟
         - 多个值 → 每日1次，每次 X-Y 分钟
@@ -138,13 +138,14 @@ def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
     if not durations:
         return "每日1次，每次4-8分钟"
 
-    durations.sort()
+    # --- 去重 + 排序 ---
+    durations = sorted(set(durations))
 
     # --- 只有一个时长 ---
     if len(durations) == 1:
         return f"每日1次，每次{durations[0]}分钟"
 
-    # --- 多个时长，取区间 ---
+    # --- 多个时长区间 ---
     return f"每日1次，每次{durations[0]}-{durations[-1]}分钟"
 
 
