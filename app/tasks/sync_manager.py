@@ -6,16 +6,24 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+# services/sync_tasks.py
+
+import asyncio
+from app.core import sync_state
+
+
 def start_sync_tasks(config):
 
     task_config = config.get("csv_to_parquet", {})
     interval = task_config.get("interval_seconds", 300)
 
-    # =========================
-    # CSV → Parquet 任务
-    # =========================
+    raw_files = task_config.get("raw_files", [])
 
-    for item in task_config.get("raw_files", []):
+    sync_state.total_csv_jobs = len(raw_files)
+
+    logger.info(f"Total CSV sync jobs: {sync_state.total_csv_jobs}")
+
+    for item in raw_files:
 
         asyncio.create_task(
             csv_to_parquet_job(
@@ -26,17 +34,9 @@ def start_sync_tasks(config):
             )
         )
 
-        logger.info(f"CSV sync task started: {item['csv']}")
-
-    # =========================
-    # Task Repository 任务
-    # =========================
-
     asyncio.create_task(
         task_repository_job(
             config=config,
             interval_seconds=interval,
         )
     )
-
-    logger.info("Task repository sync task started")
