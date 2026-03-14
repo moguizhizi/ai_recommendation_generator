@@ -13,84 +13,74 @@ from app.services.task_processor import build_task_repository
 from utils.csv_utils import csv_to_parquet
 from utils.logger import get_logger
 
+from app.core import sync_state
+
 logger = get_logger(__name__)
 
 
 async def csv_to_parquet_job(
     csv_path: str,
     parquet_path: str,
-    interval_seconds: int = 300,
-    config: Dict[str, Any] = None,
+    interval_seconds: int,
+    config: dict,
 ):
-    """
-    定时执行 CSV -> Parquet 转换
 
-    Parameters
-    ----------
-    csv_path : str
-    parquet_path : str
-    interval_seconds : int
-        执行周期
-    """
-
-    csv_path = Path(csv_path)
+    first_run = True
 
     while True:
+
         try:
-            if csv_path.exists():
-                logger.debug("Start converting CSV -> Parquet")
 
-                csv_to_parquet(
-                    csv_path=str(csv_path),
-                    parquet_path=str(parquet_path),
-                    config=config,
+            await asyncio.to_thread(
+                csv_to_parquet,
+                csv_path=csv_path,
+                parquet_path=parquet_path,
+                config=config,
+            )
+
+            await asyncio.to_thread(
+                load_and_preprocess_dataset,
+                config=config,
+                parquet_name=Path(parquet_path).stem,
+            )
+
+            if first_run:
+
+                sync_state.csv_ready_counter += 1
+
+                logger.info(
+                    f"CSV initial sync finished "
+                    f"({sync_state.csv_ready_counter}/"
+                    f"{sync_state.total_csv_jobs})"
                 )
 
-                logger.debug("CSV converted to Parquet successfully")
+                if sync_state.csv_ready_counter == sync_state.total_csv_jobs:
 
-                load_and_preprocess_dataset(
-                    config=config, parquet_name=Path(parquet_path).stem
-                )
+                    logger.info("All CSV ready")
+
+                    sync_state.csv_ready_event.set()
+
+                first_run = False
 
         except Exception:
-            logger.exception("CSV -> Parquet conversion failed")
+            logger.exception("CSV job failed")
 
         await asyncio.sleep(interval_seconds)
 
 
-async def wait_for_parquet(config, check_interval: int = 5):
-    """
-    等待 parquet 文件准备好
-    """
-
-    task_config = config.get("csv_to_parquet", {})
-    parquet_files = [item["parquet"] for item in task_config.get("raw_files", [])]
-
-    while True:
-
-        missing_files = [p for p in parquet_files if not Path(p).exists()]
-
-        if not missing_files:
-            return
-
-        logger.info(
-            "Waiting for parquet files: %s",
-            ", ".join(missing_files),
-        )
-
-        await asyncio.sleep(check_interval)
-
-
 async def task_repository_job(config, interval_seconds):
 
+    logger.info("Waiting for CSV sync...")
+
+    await sync_state.csv_ready_event.wait()
+
+    logger.info("CSV ready. Start building repository")
+
     while True:
 
-        # 等待 parquet 文件生成
-        await wait_for_parquet(config)
-
-        # 构建 task repository
-        build_task_repository(config)
-
-        logger.info("Task repository rebuilt")
+        try:
+            await asyncio.to_thread(build_task_repository, config)
+        except Exception:
+            logger.exception("Repository build failed")
 
         await asyncio.sleep(interval_seconds)
