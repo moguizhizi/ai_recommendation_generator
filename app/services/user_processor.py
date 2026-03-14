@@ -86,8 +86,8 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
                 user_row, cols.week2_perception
             ),
         },
-        "last_day_task": safe_get(user_row, cols.last_day_task),
-        "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
+        "last_day_task": safe_get(user_row, cols.last_day_task).tolist(),
+        "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task).tolist(),
     }
 
     return profile

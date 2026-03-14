@@ -28,26 +28,12 @@ def chat_api(req: AIRecPlanRequest, request: Request):
         f"[CHAT_API_START] user_id={req.user_id} " f"patient_code={req.patient_code} "
     )
 
-    try:
-        result = generate_ai_plan(
-            req, llm, model_manager=score_model_manager, config=config
-        )
+    result = generate_ai_plan(
+        req, llm, model_manager=score_model_manager, config=config
+    )
 
-        duration = round(time.time() - start_time, 3)
+    duration = round(time.time() - start_time, 3)
 
-        logger.info(
-            f"[CHAT_API_SUCCESS] user_id={req.user_id} " f"duration={duration}s"
-        )
+    logger.info(f"[CHAT_API_SUCCESS] user_id={req.user_id} " f"duration={duration}s")
 
-        return result
-
-    except Exception as e:
-        duration = round(time.time() - start_time, 3)
-
-        logger.exception(
-            f"[CHAT_API_ERROR] user_id={req.user_id} "
-            f"duration={duration}s "
-            f"error={str(e)}"
-        )
-
-        raise
+    return result
