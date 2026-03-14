@@ -275,11 +275,11 @@ def build_user_modules_by_threshold(
         )
 
         if not paradigm_tasks:
-            logger.debug(
-                f"[BUILD_TRAINING_ITEM_SKIP] user_id={user_id} "
-                f"level1_key={level1_key} no paradigm_tasks"
+            raise BizError(
+                ErrorCode.TRAINING_TASK_NOT_AVAILABLE,
+                user_id=user_id,
+                level1_key=level1_key,
             )
-            return None
 
         item = TrainingItem(
             name=f"{ability_name_cn}{suffix}",

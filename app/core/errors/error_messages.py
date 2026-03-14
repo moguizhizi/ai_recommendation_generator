@@ -8,6 +8,7 @@ ERROR_MESSAGES = {
     ErrorCode.MISSING_LAST_TASK: "用户近期未完成任何训练，计划生成失败",
     ErrorCode.TASK_NOT_FOUND_IN_REPO: "用户近期有任务异常，计划生成失败",
     ErrorCode.MISSING_WEEKLY_MISSED_TASKS: "用户近期已完成所有训练任务，无需补充计划",
+    ErrorCode.TRAINING_TASK_NOT_AVAILABLE: "当前能力暂无可用训练任务",
     ErrorCode.DATA_FILE_NOT_FOUND: "数据文件不存在",
     ErrorCode.COLUMN_MAPPING_NOT_FOUND: "列映射文件不存在",
     ErrorCode.TASK_REPO_EMPTY: "任务仓库为空",
