@@ -583,13 +583,15 @@ def predict_next_week(model, profile: dict, level1_key: str):
     return pred
 
 
-def simple_predict(score: float) -> float:
+def simple_predict(score: int) -> int:
     if score < 60:
-        return score + 5
+        inc = random.randint(3, 6)
     elif score < 80:
-        return score + 3
+        inc = random.randint(2, 4)
     else:
-        return score + 1
+        inc = random.randint(1, 2)
+
+    return score + inc
 
 
 def build_score_prediction(
