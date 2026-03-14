@@ -3,6 +3,8 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
+from app.core.errors.error_handler import biz_error_handler, generic_error_handler
+from app.core.errors.exceptions import BizError
 from app.tasks.sync_manager import start_sync_tasks
 from configs.loader import load_config
 from llm.factory import create_llm
@@ -48,6 +50,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Recommendation Service", lifespan=lifespan)
+
+app.add_exception_handler(BizError, biz_error_handler)
+
+app.add_exception_handler(Exception, generic_error_handler)
 
 app.include_router(chat_router, prefix="/api")
 app.include_router(health_router, prefix="/api")

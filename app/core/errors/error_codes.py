@@ -1,0 +1,30 @@
+# app/core/errors/error_codes.py
+
+from enum import Enum
+
+
+class ErrorCode(str, Enum):
+
+    # 用户相关
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+
+    # 数据相关
+    DATA_FILE_NOT_FOUND = "DATA_FILE_NOT_FOUND"
+    COLUMN_MAPPING_NOT_FOUND = "COLUMN_MAPPING_NOT_FOUND"
+
+    # Task
+    TASK_REPO_EMPTY = "TASK_REPO_EMPTY"
+    TASK_REPO_BUILD_FAILED = "TASK_REPO_BUILD_FAILED"
+
+    # 模型
+    MODEL_NOT_LOADED = "MODEL_NOT_LOADED"
+    SCORE_PREDICTION_FAILED = "SCORE_PREDICTION_FAILED"
+
+    # LLM
+    LLM_CALL_FAILED = "LLM_CALL_FAILED"
+
+    # AI 推荐
+    AI_PLAN_GENERATION_FAILED = "AI_PLAN_GENERATION_FAILED"
+
+    # 通用
+    INTERNAL_ERROR = "INTERNAL_ERROR"
