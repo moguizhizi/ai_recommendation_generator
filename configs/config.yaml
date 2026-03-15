@@ -27,6 +27,23 @@ runtime:
   max_retries: 3
 
 
+# ==============================
+# 原始数据同步（复制到项目目录）
+# ==============================
+
+raw_data_sync:
+
+  interval_seconds: 86400
+
+  files:
+
+    - source: /data/alg_cogtrain_brainscore_task_child/alg_cogtrain_brainscore_task_child.csv
+      target: data/external/raw/cognitive_l1/alg_cogtrain_brainscore_task_child.csv
+
+    - source: /data/alg_training_task_child/alg_training_task_child.csv
+      target: data/external/raw/cognitive_l1/alg_training_task_child.csv
+
+
 csv_to_parquet:
 
   interval_seconds: 86400

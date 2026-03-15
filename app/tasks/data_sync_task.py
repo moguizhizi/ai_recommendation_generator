@@ -11,11 +11,41 @@ from typing import Any, Dict
 from app.data.datasets.cognitive_l1_dataset import load_and_preprocess_dataset
 from app.services.task_processor import build_task_repository
 from utils.csv_utils import csv_to_parquet
+from utils.io_utils import copy_file
 from utils.logger import get_logger
 
 from app.core import sync_state
+from pathlib import Path
 
 logger = get_logger(__name__)
+
+async def raw_data_copy_job(config):
+
+    raw_config = config.get("raw_data_sync", {})
+    files = raw_config.get("files", [])
+
+    try:
+
+        for item in files:
+
+            src = Path(item["source"])
+            dst = Path(item["target"])
+
+            if not src.exists():
+                logger.warning(f"Raw source not found: {src}")
+                continue
+
+            copy_file(src, dst)
+
+            logger.info(f"Raw data copied: {src} -> {dst}")
+
+        logger.info("Raw data sync finished")
+
+        # 通知 CSV pipeline 可以开始
+        sync_state.raw_ready_event.set()
+
+    except Exception:
+        logger.exception("Raw data sync failed")
 
 
 async def csv_to_parquet_job(
