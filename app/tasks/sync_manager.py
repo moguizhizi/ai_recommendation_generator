@@ -1,6 +1,6 @@
 import asyncio
 
-from app.tasks.data_sync_task import csv_to_parquet_job, task_repository_job
+from app.tasks.data_sync_task import csv_to_parquet_job, raw_data_copy_job, task_repository_job
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,6 +23,10 @@ def start_sync_tasks(config):
 
     logger.info(f"Total CSV sync jobs: {sync_state.total_csv_jobs}")
 
+    # 1️⃣ raw 数据复制
+    asyncio.create_task(raw_data_copy_job(config))
+
+    # 2️⃣ csv pipeline
     for item in raw_files:
 
         asyncio.create_task(
@@ -34,6 +38,7 @@ def start_sync_tasks(config):
             )
         )
 
+    # 3️⃣ repository
     asyncio.create_task(
         task_repository_job(
             config=config,
