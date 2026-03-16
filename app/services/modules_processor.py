@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 from collections import defaultdict
 import random
 
+from app.core.constants import ExcludedParadigm
 from app.schemas.common import Task
 from llm.base import BaseLLM
 from app.prompts.plan_prompt import GoalSummaryPrompt
@@ -56,6 +57,11 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
         task_names = [t.task_name for t in picked_tasks if t.task_name]
         if task_names:
             task_str = "、".join(task_names)
+
+            # 如果 paradigm 在 ExcludedParadigm 中，则只显示 task_str
+            if paradigm in ExcludedParadigm._value2member_map_:
+                return task_str
+
             return f"{paradigm}（{task_str}）"
 
     # --- 2️⃣ 兜底：无范式 ---

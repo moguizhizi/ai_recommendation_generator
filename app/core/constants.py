@@ -44,3 +44,16 @@ LEVEL1_DOMAIN_KEY_MAP = {
     Level1BrainDomain.MEMORY: "memory",
     Level1BrainDomain.EXECUTIVE: "executive_function",
 }
+
+class ExcludedParadigm(str, Enum):
+    """
+    不建议在推荐模板中展示的范式
+    """
+
+    TWO_BACK = "2-back"
+    DIRECTION_STROOP_TASK_SWITCH = "方向Stroop+任务切换"
+    COLOR_STROOP = "颜色Stroop"
+    SIZE_STROOP_TASK_SWITCH = "尺寸Stroop+任务切换"
+    DIRECTION_STROOP_BEGINNER = "方向Stroop-入门"
+    N_BACK_TASK = "N-back任务"
+    UFOV_GO_NO_GO = "有效视野+go/no-go"
