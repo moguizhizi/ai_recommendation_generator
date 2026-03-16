@@ -1,6 +1,7 @@
 # app/services/plan_rule_engine.py
 import random
 import pandas as pd
+import math
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
     Level1BrainDomain,
@@ -528,6 +529,8 @@ def get_fixed_templates(profile: dict) -> dict:
     return templates.get(profile["user_type"], templates[UserType.GROWTH.value])
 
 
+
+
 def predict_next_week(model, profile: dict, level1_key: str):
     """
     根据 profile 中最近三周一级脑能力分数预测下一周
@@ -577,6 +580,9 @@ def predict_next_week(model, profile: dict, level1_key: str):
     logger.debug(f"Feature dataframe for prediction: {X.to_dict(orient='records')}")
 
     pred = model.predict(X)[0]
+
+    # 上取整
+    pred = math.ceil(pred)
 
     logger.info(f"Prediction result for {level1_key}: {pred}")
 
