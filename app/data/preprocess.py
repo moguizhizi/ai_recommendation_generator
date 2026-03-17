@@ -1,6 +1,6 @@
 # app/data/preprocess.py
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -23,6 +23,7 @@ def preprocess_dataframe(
     required_fields: Optional[List[str]] = None,
     numeric_fields: Optional[List[str]] = None,
     sep: Optional[str] = ",",
+    value_replacements: Optional[Dict[str, Dict[Any, Any]]] = None,  
 ) -> pd.DataFrame:
     """
     DataFrame 数据预处理主流程
@@ -35,6 +36,7 @@ def preprocess_dataframe(
     - 日期字段解析（可选）
     - 多值字段拆分（可选）
     - 数值字段转换（可选）
+    - 按列值替换（可选）
     """
 
     df = clean_dataframe(df)
@@ -44,6 +46,12 @@ def preprocess_dataframe(
     df = drop_empty_rows(df)
 
     df = fill_na_values(df)
+
+    # ✅ 新增：按列值替换
+    if value_replacements:
+        for col, replace_map in value_replacements.items():
+            if col in df.columns:
+                df[col] = df[col].replace(replace_map)
 
     if required_fields:
         validate_schema(df, required_fields)

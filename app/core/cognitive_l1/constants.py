@@ -80,3 +80,55 @@ class UserTrainingColumnName(str, Enum):
 class CognitiveL1DatasetName(str, Enum):
     USER_BRAIN_SCORE = "alg_cogtrain_brainscore_task_child"
     TRAINING_TASK = "alg_training_task_child"
+
+class Level1BrainDomain(str, Enum):
+    """
+    一级脑能力（Level1 Cognitive Domain）
+    """
+
+    PERCEPTION = "感知觉"
+    ATTENTION = "注意力"
+    MEMORY = "记忆力"
+    EXECUTIVE = "执行功能"
+
+
+class ParadigmType(str, Enum):
+    """
+    任务范式枚举
+    """
+
+    NO_PARADIGM = "no_paradigm"
+
+    SEQ_MEMORY_SINGLE_MATCH = "序列记忆单项匹配"
+    RECALL_DISTRIBUTION_INTERFERENCE = "回忆分布+干扰"
+    TWO_BACK = "2-back"
+    BATCH_MEMORY_SINGLE_MATCH = "批量记忆单项匹配"
+    BILATERAL_INHIBITION_REVERSE = "双侧抑制+反向"
+    PSYCHOLOGICAL_ALERTNESS = "心理警觉任务"
+    DIRECTION_STROOP_TASK_SWITCH = "方向Stroop+任务切换"
+    BILATERAL_INHIBITION = "双侧抑制"
+    COLOR_STROOP = "颜色Stroop"
+    UFOV_BEGINNER = "有效视野-入门"
+    SIZE_STROOP_TASK_SWITCH = "尺寸Stroop+任务切换"
+    DIRECTION_STROOP_BEGINNER = "方向Stroop-入门"
+    RAPID_SEQUENCE_BEGINNER = "快速序列-入门"
+    CPT = "持续度表现测验"
+    VISUAL_SEARCH_STANDARD = "视觉搜索-标准"
+    N_BACK_TASK = "N-back任务"
+    RSVP_TASK = "快速序列视觉呈现任务"
+    RAPID_SEQUENCE_STANDARD = "快速序列-标准"
+    LEFT_RIGHT_ROTATION_SYMMETRY = "左右旋转+对称物"
+    CORSI_BLOCK = "科西方块敲击任务"
+    SEQ_MEMORY_FACE = "序列记忆单项匹配+面孔"
+    CANCELLATION_TEST = "划销测验"
+    DYNAMIC_CANCELLATION_STANDARD = "动态划消-标准"
+    NAME_ASSOCIATION = "姓名关联任务"
+    VISUAL_TRACKING = "视觉追踪"
+    GO_NO_GO = "尝试/不尝试任务"
+    VISUAL_SEARCH_BEGINNER = "视觉搜索-入门"
+    RECALL_POSITION_STANDARD = "回忆位置-标准"
+    LEFT_RIGHT_ROTATION = "左右旋转"
+    UFOV_MEMORY_SPAN = "有效视野+记忆广度"
+    BATCH_MEMORY_MULTI_MATCH = "批量记忆多项匹配"
+    UFOV_GO_NO_GO = "有效视野+go/no-go"
+    FEATURE_INDUCTION_MATCH = "特征归纳匹配"

@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 from collections import defaultdict
 import random
 
+from app.core.cognitive_l1.constants import ParadigmType
 from app.core.constants import ExcludedParadigm
 from app.schemas.common import Task
 from llm.base import BaseLLM
@@ -39,23 +40,47 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
     将 paradigm_tasks 组装为展示字符串
 
     规则：
-    1. 若存在有 paradigm 的项 → 随机选 1 个范式，最多 2 个 task，直接返回
-    2. 若不存在任何 paradigm → 使用 no_paradigm 组装返回（最多 2 个）
+    1. 优先选择 task >=2 的范式
+    2. 若不存在，则从 task <2 的范式中随机选
+    3. task 数量目标为 2~3，不够则降级
     """
 
-    # --- 1️⃣ 收集所有有范式且有任务的 ---
-    valid_paradigms = [
-        (paradigm, tasks)
-        for paradigm, tasks in paradigm_tasks.items()
-        if paradigm != "no_paradigm" and tasks
-    ]
+    # --- 收集所有范式 ---
+    paradigms_ge2 = []
+    paradigms_lt2 = []
 
-    if valid_paradigms:
-        paradigm, tasks = random.choice(valid_paradigms)
-        picked_tasks = tasks[:2]
+    for paradigm, tasks in paradigm_tasks.items():
+        if paradigm == ParadigmType.NO_PARADIGM.value or not tasks:
+            continue
+
+        if len(tasks) >= 2:
+            paradigms_ge2.append((paradigm, tasks))
+        else:
+            paradigms_lt2.append((paradigm, tasks))
+
+    # --- 优先选择 >=2 的范式 ---
+    if paradigms_ge2:
+        paradigm, tasks = random.choice(paradigms_ge2)
+    elif paradigms_lt2:
+        paradigm, tasks = random.choice(paradigms_lt2)
+    else:
+        paradigm, tasks = None, None
+
+    if tasks:
+
+        # 目标 task 数
+        target_count = random.randint(2, 3)
+
+        # 实际取值
+        task_count = min(len(tasks), target_count)
+
+        # 随机取 task
+        picked_tasks = random.sample(tasks, task_count)
 
         task_names = [t.task_name for t in picked_tasks if t.task_name]
+
         if task_names:
+
             task_str = "、".join(task_names)
 
             # 如果 paradigm 在 ExcludedParadigm 中，则只显示 task_str
@@ -64,14 +89,18 @@ def fetch_tasks_by_ability(paradigm_tasks: Dict[str, List[Task]]) -> str:
 
             return f"{paradigm}（{task_str}）"
 
-    # --- 2️⃣ 兜底：无范式 ---
-    no_paradigm_tasks = paradigm_tasks.get("no_paradigm", [])
+    # --- fallback ---
+    no_paradigm_tasks = paradigm_tasks.get(ParadigmType.NO_PARADIGM.value, [])
+
     if no_paradigm_tasks:
-        picked_tasks = no_paradigm_tasks[:2]
+
+        task_count = min(len(no_paradigm_tasks), random.randint(2, 3))
+        picked_tasks = random.sample(no_paradigm_tasks, task_count)
+
         task_names = [t.task_name for t in picked_tasks if t.task_name]
+
         if task_names:
-            task_str = "、".join(task_names)
-            return f"{task_str}等任务"
+            return f"{'、'.join(task_names)}等任务"
 
     return ""
 

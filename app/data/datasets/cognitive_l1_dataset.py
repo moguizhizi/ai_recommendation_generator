@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
+    ParadigmType,
     TaskColumnName,
     UserTrainingColumnName,
 )
@@ -61,6 +62,7 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
     required_fields = None
     multi_value_fields = None
     sep = None
+    value_replacements = None
 
     # numeric fields depend on dataset type
     if parquet_name == CognitiveL1DatasetName.USER_BRAIN_SCORE:
@@ -121,6 +123,8 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
             cols.max_duration,
         ]
 
+        value_replacements = {cols.paradigm:{"":ParadigmType.NO_PARADIGM.value},}
+
     else:
         raise ValueError(f"Unsupported dataset: {parquet_name}")
 
@@ -141,6 +145,7 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
         numeric_fields=numeric_fields,
         multi_value_fields=multi_value_fields,
         sep=sep,
+        value_replacements=value_replacements,
     )
 
     logger.debug(f"Processed dataset shape: {df.shape}")
