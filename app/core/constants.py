@@ -1,6 +1,8 @@
 # app/core/constants.py
 from enum import Enum
 
+from app.core.cognitive_l1.constants import Level1BrainDomain, ParadigmType
+
 
 class UserType(str, Enum):
     ADVANTAGE = "优势倾向型"
@@ -22,17 +24,6 @@ class ModuleName(str, Enum):
     STEP_UP = "阶梯式提升模块"
 
 
-class Level1BrainDomain(str, Enum):
-    """
-    一级脑能力（Level1 Cognitive Domain）
-    """
-
-    PERCEPTION = "感知觉"
-    ATTENTION = "注意力"
-    MEMORY = "记忆力"
-    EXECUTIVE = "执行功能"
-
-
 class ScoreThreshold:
     ADVANTAGE_LINE = 100
     POTENTIAL_LINE = 90
@@ -50,10 +41,10 @@ class ExcludedParadigm(str, Enum):
     不建议在推荐模板中展示的范式
     """
 
-    TWO_BACK = "2-back"
-    DIRECTION_STROOP_TASK_SWITCH = "方向Stroop+任务切换"
-    COLOR_STROOP = "颜色Stroop"
-    SIZE_STROOP_TASK_SWITCH = "尺寸Stroop+任务切换"
-    DIRECTION_STROOP_BEGINNER = "方向Stroop-入门"
-    N_BACK_TASK = "N-back任务"
-    UFOV_GO_NO_GO = "有效视野+go/no-go"
+    TWO_BACK = ParadigmType.TWO_BACK.value
+    DIRECTION_STROOP_TASK_SWITCH = ParadigmType.DIRECTION_STROOP_TASK_SWITCH.value
+    COLOR_STROOP = ParadigmType.COLOR_STROOP.value
+    SIZE_STROOP_TASK_SWITCH = ParadigmType.SIZE_STROOP_TASK_SWITCH.value
+    DIRECTION_STROOP_BEGINNER = ParadigmType.DIRECTION_STROOP_BEGINNER.value
+    N_BACK_TASK = ParadigmType.N_BACK_TASK.value
+    UFOV_GO_NO_GO = ParadigmType.UFOV_GO_NO_GO.value
