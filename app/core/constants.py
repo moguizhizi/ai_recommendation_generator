@@ -36,6 +36,7 @@ LEVEL1_DOMAIN_KEY_MAP = {
     Level1BrainDomain.EXECUTIVE: "executive_function",
 }
 
+
 class ExcludedParadigm(str, Enum):
     """
     不建议在推荐模板中展示的范式
@@ -48,3 +49,16 @@ class ExcludedParadigm(str, Enum):
     DIRECTION_STROOP_BEGINNER = ParadigmType.DIRECTION_STROOP_BEGINNER.value
     N_BACK_TASK = ParadigmType.N_BACK_TASK.value
     UFOV_GO_NO_GO = ParadigmType.UFOV_GO_NO_GO.value
+
+
+class Level1Score:
+    """
+    一级脑能力分数体系
+    """
+
+    MIN_SCORE = 0
+    MAX_SCORE = 160
+
+    @classmethod
+    def clamp(cls, score: float) -> float:
+        return max(cls.MIN_SCORE, min(cls.MAX_SCORE, score))
