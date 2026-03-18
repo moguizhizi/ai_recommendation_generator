@@ -5,6 +5,7 @@ import math
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
     Level1BrainDomain,
+    Level1Score,
     ModuleName,
     UserType,
     ScoreThreshold,
@@ -529,8 +530,6 @@ def get_fixed_templates(profile: dict) -> dict:
     return templates.get(profile["user_type"], templates[UserType.GROWTH.value])
 
 
-
-
 def predict_next_week(model, profile: dict, level1_key: str):
     """
     根据 profile 中最近三周一级脑能力分数预测下一周
@@ -615,6 +614,8 @@ def build_score_prediction(
         if predicted is None or predicted <= historical:
             predicted = simple_predict(historical)
 
+        predicted = Level1Score.clamp(predicted)
+
         return DimensionScorePrediction(
             historical_score=historical,
             predicted_score=predicted,
@@ -649,10 +650,9 @@ def render_plan_text(plan: AIRecPlanData) -> str:
             letter = chr(97 + sub_idx)  # a,b,c,d
 
             lines.append(f"    {letter}. {item.name}")
-            lines.append(f"        任务：{item.tasks}")
-            lines.append(f"        难度：{item.difficulty}")
-            lines.append(f"        频次：{item.frequency}")
-            lines.append(f"        目标：{item.goal}")
+            lines.append(f"    任务名称：{item.tasks}")
+            lines.append(f"    训练频次：{item.frequency}")
+            lines.append(f"    训练目标：{item.goal}")
 
             # if item.description:
             #     lines.append(f"        说明：{item.description}")
