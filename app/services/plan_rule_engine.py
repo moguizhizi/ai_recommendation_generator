@@ -590,7 +590,7 @@ def predict_next_week(model, profile: dict, level1_key: str):
 
 def simple_predict(score: int) -> int:
     if score < 60:
-        inc = random.randint(3, 6)
+        inc = random.randint(4, 8)
     elif score < 80:
         inc = random.randint(2, 4)
     else:
