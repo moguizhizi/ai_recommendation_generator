@@ -50,6 +50,51 @@ class UserTrainingColumnName(str, Enum):
     WEEK2_MEMORY = "倒数两周_记忆力"
     WEEK2_EXECUTIVE = "倒数两周_执行控制"
 
+    WEEK3_PERCEPTION = "倒数三周_感知觉"
+    WEEK3_ATTENTION = "倒数三周_注意力"
+    WEEK3_MEMORY = "倒数三周_记忆力"
+    WEEK3_EXECUTIVE = "倒数三周_执行控制"
+
+    WEEK4_PERCEPTION = "倒数四周_感知觉"
+    WEEK4_ATTENTION = "倒数四周_注意力"
+    WEEK4_MEMORY = "倒数四周_记忆力"
+    WEEK4_EXECUTIVE = "倒数四周_执行控制"
+
+    WEEK5_PERCEPTION = "倒数五周_感知觉"
+    WEEK5_ATTENTION = "倒数五周_注意力"
+    WEEK5_MEMORY = "倒数五周_记忆力"
+    WEEK5_EXECUTIVE = "倒数五周_执行控制"
+
+    WEEK6_PERCEPTION = "倒数六周_感知觉"
+    WEEK6_ATTENTION = "倒数六周_注意力"
+    WEEK6_MEMORY = "倒数六周_记忆力"
+    WEEK6_EXECUTIVE = "倒数六周_执行控制"
+
+    WEEK7_PERCEPTION = "倒数七周_感知觉"
+    WEEK7_ATTENTION = "倒数七周_注意力"
+    WEEK7_MEMORY = "倒数七周_记忆力"
+    WEEK7_EXECUTIVE = "倒数七周_执行控制"
+
+    WEEK8_PERCEPTION = "倒数八周_感知觉"
+    WEEK8_ATTENTION = "倒数八周_注意力"
+    WEEK8_MEMORY = "倒数八周_记忆力"
+    WEEK8_EXECUTIVE = "倒数八周_执行控制"
+
+    WEEK9_PERCEPTION = "倒数九周_感知觉"
+    WEEK9_ATTENTION = "倒数九周_注意力"
+    WEEK9_MEMORY = "倒数九周_记忆力"
+    WEEK9_EXECUTIVE = "倒数九周_执行控制"
+
+    WEEK10_PERCEPTION = "倒数十周_感知觉"
+    WEEK10_ATTENTION = "倒数十周_注意力"
+    WEEK10_MEMORY = "倒数十周_记忆力"
+    WEEK10_EXECUTIVE = "倒数十周_执行控制"
+
+    WEEK11_PERCEPTION = "倒数十一周_感知觉"
+    WEEK11_ATTENTION = "倒数十一周_注意力"
+    WEEK11_MEMORY = "倒数十一周_记忆力"
+    WEEK11_EXECUTIVE = "倒数十一周_执行控制"
+
     EPISODIC_MEMORY = "情景记忆"
     INTERFERENCE_CONTROL = "干扰控制"
     RESPONSE_INHIBITION = "反应抑制"
@@ -75,12 +120,14 @@ class UserTrainingColumnName(str, Enum):
     ATTENTION_CONTROL = "注意控制"
 
     LAST_DAY_TASK = "最后一天训练任务"
+    LAST_84_DAYS_TASK = "最近84天训练任务"
     LAST_7_DAYS_NO_TASK = "最近七天未训练任务"
 
 
 class CognitiveL1DatasetName(str, Enum):
     USER_BRAIN_SCORE = "alg_cogtrain_brainscore_task_child"
     TRAINING_TASK = "alg_training_task_child"
+
 
 class Level1BrainDomain(str, Enum):
     """
