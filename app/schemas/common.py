@@ -9,6 +9,7 @@ class Task(BaseModel):
 
     paradigm: Optional[str] = Field(None, title="训练范式")
     cognitive_domain: Optional[str] = Field(None, title="一级脑能力")
+    sub_cognitive_domain: Optional[str] = Field(None, title="二级脑能力")
 
     difficulty: Optional[float] = Field(None, title="难度等级")
     start_level: Optional[int] = Field(None, title="起始难度等级")

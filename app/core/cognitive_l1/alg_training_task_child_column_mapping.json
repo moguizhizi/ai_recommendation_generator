@@ -3,6 +3,7 @@
     "任务": "task_name",
     "范式": "paradigm",
     "一级脑能力": "cognitive_domain",
+    "二级脑能力": "sub_cognitive_domain",
     "难度": "difficulty",
     "起始难度等级": "start_level",
     "级别上线": "level_max",

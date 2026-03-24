@@ -47,6 +47,7 @@ def fetch_task_info(config: Dict[str, Any]) -> Dict[str, Any]:
             "task_name": safe_get(row, cols.task_name),
             "paradigm": safe_get(row, cols.paradigm),
             "cognitive_domain": safe_get(row, cols.cognitive_domain),
+            "sub_cognitive_domain": safe_get(row, cols.sub_cognitive_domain),
             "difficulty": safe_get(row, cols.difficulty),
             "start_level": safe_get(row, cols.start_level),
             "level_max": safe_get(row, cols.level_max),
