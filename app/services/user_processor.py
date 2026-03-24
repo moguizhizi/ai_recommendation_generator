@@ -17,6 +17,23 @@ import json
 from typing import Dict, Any
 
 
+def _build_level1_scores(user_row, cols: ColumnAccessor, week: int) -> Dict[str, Any]:
+    return {
+        Level1BrainDomain.MEMORY.value: safe_get(
+            user_row, getattr(cols, f"week{week}_memory")
+        ),
+        Level1BrainDomain.EXECUTIVE.value: safe_get(
+            user_row, getattr(cols, f"week{week}_executive")
+        ),
+        Level1BrainDomain.ATTENTION.value: safe_get(
+            user_row, getattr(cols, f"week{week}_attention")
+        ),
+        Level1BrainDomain.PERCEPTION.value: safe_get(
+            user_row, getattr(cols, f"week{week}_perception")
+        ),
+    }
+
+
 def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) -> Dict:
     """
     从 patient 数据中读取用户画像
@@ -70,24 +87,14 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
                 user_row, cols.latest_perception
             ),
         },
-        "week1_level1_scores": {
-            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.week1_memory),
-            Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.week1_executive),
-            Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.week1_attention),
-            Level1BrainDomain.PERCEPTION.value: safe_get(
-                user_row, cols.week1_perception
-            ),
-        },
-        "week2_level1_scores": {
-            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.week2_memory),
-            Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.week2_executive),
-            Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.week2_attention),
-            Level1BrainDomain.PERCEPTION.value: safe_get(
-                user_row, cols.week2_perception
-            ),
-        },
         "last_day_task": safe_get(user_row, cols.last_day_task),
+        "last_84_days_task": safe_get(user_row, cols.last_84_days_task),
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
     }
+
+    for week in range(1, 12):
+        profile[f"week{week}_level1_scores"] = _build_level1_scores(
+            user_row, cols, week
+        )
 
     return profile
