@@ -1,8 +1,4 @@
 from app.core.cognitive_l1.constants import L1_INDEX, L2_INDEX
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
-
-
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List, Tuple
 
