@@ -599,22 +599,45 @@ def simple_predict(score: int) -> int:
     return score + inc
 
 
+# def build_score_prediction(
+#     profile: dict, fixed_templates: dict, model_manager: ModelManager
+# ) -> ScorePrediction:
+#     level1_scores = profile.get("latest_level1_scores", {})
+#
+#     def build_dim(level1_key: str) -> DimensionScorePrediction:
+#         historical = float(level1_scores.get(level1_key, 0))
+#         predicted = predict_next_week(
+#             model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
+#             profile=profile,
+#             level1_key=level1_key,
+#         )
+#         if predicted is None or predicted <= historical:
+#             predicted = simple_predict(historical)
+#
+#         predicted = Level1Score.clamp(predicted)
+#
+#         return DimensionScorePrediction(
+#             historical_score=historical,
+#             predicted_score=predicted,
+#         )
+#
+#     return ScorePrediction(
+#         summary=fixed_templates["score_prediction"],
+#         attention=build_dim(Level1BrainDomain.ATTENTION.value),
+#         memory=build_dim(Level1BrainDomain.MEMORY.value),
+#         executive_control=build_dim(Level1BrainDomain.EXECUTIVE.value),
+#         perception=build_dim(Level1BrainDomain.PERCEPTION.value),
+#     )
+
+
 def build_score_prediction(
     profile: dict, fixed_templates: dict, model_manager: ModelManager
 ) -> ScorePrediction:
     level1_scores = profile.get("latest_level1_scores", {})
 
     def build_dim(level1_key: str) -> DimensionScorePrediction:
-        historical = float(level1_scores.get(level1_key, 0))
-        predicted = predict_next_week(
-            model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
-            profile=profile,
-            level1_key=level1_key,
-        )
-        if predicted is None or predicted <= historical:
-            predicted = simple_predict(historical)
-
-        predicted = Level1Score.clamp(predicted)
+        historical = float(level1_scores.get(level1_key, 100))
+        predicted = Level1Score.clamp(max(historical + 2, 100))
 
         return DimensionScorePrediction(
             historical_score=historical,
