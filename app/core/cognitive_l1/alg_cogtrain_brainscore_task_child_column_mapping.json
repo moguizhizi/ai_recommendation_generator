@@ -74,5 +74,5 @@
     "注意控制": "attention_control",
     "最后一天训练任务": "last_day_task",
     "最近七天未训练任务": "last_7_days_no_task",
-    "最近84天训练任务": "last_84_days_task",
+    "最近84天训练任务": "last_84_days_task"
 }
