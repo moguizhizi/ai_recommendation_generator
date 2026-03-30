@@ -9,6 +9,7 @@ ERROR_MESSAGES = {
     ErrorCode.TASK_NOT_FOUND_IN_REPO: "用户近期有任务异常，计划生成失败",
     ErrorCode.MISSING_WEEKLY_MISSED_TASKS: "用户近期已完成所有训练任务，无需补充计划",
     ErrorCode.INVALID_LATEST_LEVEL1_SCORES: "用户一级脑能力分数异常，计划生成失败",
+    ErrorCode.NEW_USER_PLAN_NOT_AVAILABLE: "当前用户训练历史不足，暂时无法生成个性化推荐计划，请先完成一段时间训练后再试。",
     ErrorCode.TRAINING_TASK_NOT_AVAILABLE: "当前能力暂无可用训练任务",
     ErrorCode.DATA_FILE_NOT_FOUND: "数据文件不存在",
     ErrorCode.COLUMN_MAPPING_NOT_FOUND: "列映射文件不存在",

@@ -120,8 +120,8 @@ class UserTrainingColumnName(str, Enum):
     ATTENTION_CONTROL = "注意控制"
 
     LAST_DAY_TASK = "最后一天训练任务"
-    LAST_84_DAYS_TASK = "最近84天训练任务"
     LAST_7_DAYS_NO_TASK = "最近七天未训练任务"
+    LAST_84_DAYS_TASK = "最近84天训练任务"
 
 
 class CognitiveL1DatasetName(str, Enum):

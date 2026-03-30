@@ -94,6 +94,14 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
             invalid_scores=invalid_level1_scores,
         )
 
+    last_84_days_task = safe_get(user_row, cols.last_84_days_task)
+    if last_84_days_task is None or len(last_84_days_task) == 0:
+        raise BizError(
+            ErrorCode.NEW_USER_PLAN_NOT_AVAILABLE,
+            user_id=user_id,
+            patient_code=patient_code,
+        )
+
     # 构建画像
     profile = {
         "user_id": safe_get(user_row, cols.user_id),
@@ -101,7 +109,7 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         "disease_tag": safe_get(user_row, cols.disease),
         "latest_level1_scores": latest_level1_scores,
         "last_day_task": safe_get(user_row, cols.last_day_task),
-        "last_84_days_task": safe_get(user_row, cols.last_84_days_task),
+        "last_84_days_task": last_84_days_task,
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
     }
 
