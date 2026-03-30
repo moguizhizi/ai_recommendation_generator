@@ -139,6 +139,31 @@ class Level1BrainDomain(str, Enum):
     MEMORY = "记忆力"
     EXECUTIVE = "执行功能"
 
+class Level2BrainDomain(str, Enum):
+    """
+    二级脑能力（Level2 Cognitive Domain）
+    """
+
+    WORKING_MEMORY = "工作记忆"
+    CONFLICT_INHIBITION = "冲突抑制"
+    INTERFERENCE_CONTROL = "干扰控制"
+    ALERTING_ATTENTION = "警觉性注意"
+    SELECTIVE_ATTENTION = "选择注意"
+    PROCESSING_SPEED = "加工速度"
+    SUSTAINED_ATTENTION = "持续注意"
+    FOCUSED_ATTENTION = "集中性注意"
+    SPATIAL_PERCEPTION = "空间知觉"
+    SPATIAL_MEMORY = "空间记忆"
+    SPATIAL_WORKING_MEMORY = "空间工作记忆"
+    MEMORY_SPAN = "记忆广度"
+    MOTOR_PERCEPTION = "运动知觉"
+    COGNITIVE_FLEXIBILITY = "认知灵活性"
+    TIME_PERCEPTION = "时间知觉"
+    ATTENTION_CONTROL = "注意控制"
+    RESPONSE_INHIBITION = "反应抑制"
+    EPISODIC_MEMORY = "情景记忆"
+    NUMERICAL_SENSE = "数感"
+
 
 class ParadigmType(str, Enum):
     """
