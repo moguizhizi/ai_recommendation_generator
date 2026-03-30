@@ -24,7 +24,7 @@ class Task(BaseModel):
 
     training_time: Optional[int] = Field(None, title="训练时间")
 
-    brain_coord: Optional[List[Tuple[str, str]]] = Field(
+    brain_coord: Optional[List[Tuple[int, int]]] = Field(
         default=None,
         title="脑能力坐标 (L1, L2)"
     )

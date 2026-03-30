@@ -1,6 +1,9 @@
 # app/services/user_processor.py
-import pandas as pd
 import json
+from numbers import Number
+from typing import Any, Dict
+
+import pandas as pd
 
 from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
@@ -10,11 +13,6 @@ from app.core.constants import Level1BrainDomain
 from app.core.errors.error_codes import ErrorCode
 from app.core.errors.exceptions import BizError
 from utils.dataframe_utils import ColumnAccessor, safe_get
-
-
-import pandas as pd
-import json
-from typing import Dict, Any
 
 
 def _build_level1_scores(user_row, cols: ColumnAccessor, week: int) -> Dict[str, Any]:
@@ -70,23 +68,38 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
             patient_code=patient_code,
         )
 
+    latest_level1_scores = {
+        Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.latest_memory),
+        Level1BrainDomain.EXECUTIVE.value: safe_get(
+            user_row, cols.latest_executive
+        ),
+        Level1BrainDomain.ATTENTION.value: safe_get(
+            user_row, cols.latest_attention
+        ),
+        Level1BrainDomain.PERCEPTION.value: safe_get(
+            user_row, cols.latest_perception
+        ),
+    }
+
+    invalid_level1_scores = {
+        domain: score
+        for domain, score in latest_level1_scores.items()
+        if not isinstance(score, Number)
+    }
+    if invalid_level1_scores:
+        raise BizError(
+            ErrorCode.INVALID_LATEST_LEVEL1_SCORES,
+            user_id=user_id,
+            patient_code=patient_code,
+            invalid_scores=invalid_level1_scores,
+        )
+
     # 构建画像
     profile = {
         "user_id": safe_get(user_row, cols.user_id),
         "patient_code": safe_get(user_row, cols.patient_code),
         "disease_tag": safe_get(user_row, cols.disease),
-        "latest_level1_scores": {
-            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.latest_memory),
-            Level1BrainDomain.EXECUTIVE.value: safe_get(
-                user_row, cols.latest_executive
-            ),
-            Level1BrainDomain.ATTENTION.value: safe_get(
-                user_row, cols.latest_attention
-            ),
-            Level1BrainDomain.PERCEPTION.value: safe_get(
-                user_row, cols.latest_perception
-            ),
-        },
+        "latest_level1_scores": latest_level1_scores,
         "last_day_task": safe_get(user_row, cols.last_day_task),
         "last_84_days_task": safe_get(user_row, cols.last_84_days_task),
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
