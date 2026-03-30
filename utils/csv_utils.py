@@ -42,15 +42,20 @@ def csv_to_parquet(
     # 从 config 读取字段
     # =========================
     columns = None
+    max_rows = None
+    csv_name = csv_path.stem
     if config is not None:
-        csv_name = csv_path.stem
         columns = config.get("columns", {}).get(csv_name)
+        max_rows = config.get("debug", {}).get("dataset_row_limits", {}).get(csv_name)
 
     read_csv_kwargs = dict(
         encoding=encoding,
         sep=sep,
         dtype=str,
     )
+
+    if max_rows is not None:
+        logger.info(f"Applying debug row limit for {csv_name}: {max_rows}")
 
     if columns:
         read_csv_kwargs["header"] = None
@@ -62,7 +67,7 @@ def csv_to_parquet(
     # 小文件直接读取
     # =========================
     if chunksize is None:
-        df = pd.read_csv(csv_path, **read_csv_kwargs)
+        df = pd.read_csv(csv_path, nrows=max_rows, **read_csv_kwargs)
         df.to_parquet(parquet_path, index=False)
         total_csv_rows = len(df)
 
@@ -72,12 +77,21 @@ def csv_to_parquet(
     else:
         writer_initialized = False
         for chunk in pd.read_csv(csv_path, chunksize=chunksize, **read_csv_kwargs):
+            if max_rows is not None:
+                remaining_rows = max_rows - total_csv_rows
+                if remaining_rows <= 0:
+                    break
+                chunk = chunk.iloc[:remaining_rows]
+
             total_csv_rows += len(chunk)
             if not writer_initialized:
                 chunk.to_parquet(parquet_path, index=False)
                 writer_initialized = True
             else:
                 chunk.to_parquet(parquet_path, index=False, append=True)
+
+            if max_rows is not None and total_csv_rows >= max_rows:
+                break
 
     # =========================
     # 检查 Parquet 行数

@@ -1,5 +1,10 @@
+from app.core.cognitive_l1.constants import L1_INDEX, L2_INDEX
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Optional, List, Tuple
 
 
 class Task(BaseModel):
@@ -23,10 +28,42 @@ class Task(BaseModel):
 
     training_time: Optional[int] = Field(None, title="训练时间")
 
-    # 自动把 id 转为 str
+    brain_coord: Optional[List[Tuple[str, str]]] = Field(
+        default=None,
+        title="脑能力坐标 (L1, L2)"
+    )
+
     @field_validator("task_id", mode="before")
     @classmethod
     def normalize_id(cls, v):
         if v is None:
             raise ValueError("task_id 不能为空")
         return str(v)
+
+    @model_validator(mode="after")
+    def build_brain_coord(self):
+        raw = self.sub_cognitive_domain
+
+        if not raw:
+            self.brain_coord = []
+            return self
+
+        # ✅ 只取第一个
+        first_item = raw.split(";")[0]
+
+        if "_" not in first_item:
+            self.brain_coord = []
+            return self
+
+        l1_cn, l2_cn = first_item.split("_", 1)
+
+        if l1_cn not in L1_INDEX or l2_cn not in L2_INDEX:
+            self.brain_coord = []
+            return self
+
+        self.brain_coord = [(
+            L1_INDEX[l1_cn],
+            L2_INDEX[l2_cn]
+        )]
+
+        return self
