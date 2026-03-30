@@ -12,6 +12,7 @@ from app.services.plan_rule_engine import (
     build_score_prediction,
     build_special_user_modules,
     enrich_profile_with_user_type,
+    enrich_user_profile_with_brain_distribution,
     enrich_user_profile_with_tasks,
     get_fixed_templates,
     render_plan_text,
@@ -44,10 +45,11 @@ def generate_ai_plan(
     config: Dict[str, Any],
 ) -> AIRecPlanResponse:
 
-    profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
     task_repo = get_task_repository(config=config)
-
+    profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
+    
     profile = enrich_user_profile_with_tasks(profile, task_repo)
+    profile = enrich_user_profile_with_brain_distribution(profile, task_repo)
     profile = enrich_profile_with_user_type(profile)
 
     fixed_templates = get_fixed_templates(profile)
