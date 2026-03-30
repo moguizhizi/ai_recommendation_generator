@@ -57,22 +57,31 @@ async def csv_to_parquet_job(
 
     first_run = True
 
+    logger.info(f"Waiting for raw data sync before starting CSV job: {csv_path}")
+    await sync_state.raw_ready_event.wait()
+    logger.info(f"Raw data ready. Starting CSV job: {csv_path}")
+
     while True:
 
         try:
 
+            logger.info(f"Starting CSV to Parquet sync: {csv_path} -> {parquet_path}")
             await asyncio.to_thread(
                 csv_to_parquet,
                 csv_path=csv_path,
                 parquet_path=parquet_path,
                 config=config,
             )
+            logger.info(f"Finished CSV to Parquet sync: {csv_path} -> {parquet_path}")
 
+            parquet_name = Path(parquet_path).stem
+            logger.info(f"Starting dataset preprocess: {parquet_name}")
             await asyncio.to_thread(
                 load_and_preprocess_dataset,
                 config=config,
-                parquet_name=Path(parquet_path).stem,
+                parquet_name=parquet_name,
             )
+            logger.info(f"Finished dataset preprocess: {parquet_name}")
 
             if first_run:
 
