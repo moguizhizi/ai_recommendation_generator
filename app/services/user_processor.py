@@ -3,6 +3,7 @@ import json
 from numbers import Number
 from typing import Any, Dict
 
+import numpy as np
 import pandas as pd
 
 from app.core.cognitive_l1.constants import (
@@ -12,6 +13,7 @@ from app.core.cognitive_l1.constants import (
 from app.core.constants import Level1BrainDomain
 from app.core.errors.error_codes import ErrorCode
 from app.core.errors.exceptions import BizError
+from app.schemas.common import Task
 from utils.dataframe_utils import ColumnAccessor, safe_get
 
 
@@ -30,6 +32,28 @@ def _build_level1_scores(user_row, cols: ColumnAccessor, week: int) -> Dict[str,
             user_row, getattr(cols, f"week{week}_perception")
         ),
     }
+
+
+def build_user_matrix(last_84_days_task, task_map: Dict[str, Task]) -> np.ndarray:
+    matrix = np.zeros((4, 19), dtype=int)
+
+    if not last_84_days_task:
+        return matrix
+
+    for item in last_84_days_task:
+        if not item:
+            continue
+
+        task_id = str(item).split("_", 1)[0]
+        task = task_map.get(task_id)
+
+        if not task or not task.brain_coord:
+            continue
+
+        for l1, l2 in task.brain_coord:
+            matrix[l1][l2] += 1
+
+    return matrix
 
 
 def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) -> Dict:

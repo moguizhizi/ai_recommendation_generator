@@ -10,7 +10,7 @@ from app.core.constants import (
     UserType,
     ScoreThreshold,
 )
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 from collections import defaultdict
 from app.core.errors.error_codes import ErrorCode
 from app.core.errors.exceptions import BizError
@@ -148,6 +148,120 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
 
     logger.debug(
         f"[ENRICH] profile enrichment complete for user_id={profile.get('user_id')}"
+    )
+
+    return enriched_profile
+
+def enrich_user_profile_with_brain_distribution(
+    profile: Dict[str, Any],
+    task_repo: Dict[str, Any],
+    build_matrix: bool = False,  # 是否额外构建矩阵
+) -> Dict[str, Any]:
+    """
+    基于 last_84_days_task 构建用户脑能力分布（L1 * L2）
+
+    Args:
+        profile: 用户画像
+        task_repo: 任务仓库（包含 task_index）
+        build_matrix: 是否构建 4x19 矩阵（默认 False）
+
+    Returns:
+        enriched_profile
+    """
+
+    task_index: Dict[str, Any] = task_repo.get("task_index", {})
+    enriched_profile = dict(profile)  # 浅拷贝
+
+    last_84_days_task = profile.get("last_84_days_task")
+
+    # --- 1️⃣ 参数校验 ---
+    if not isinstance(last_84_days_task, list) or not last_84_days_task:
+        raise BizError(
+            ErrorCode.NEW_USER_PLAN_NOT_AVAILABLE,
+            user_id=profile.get("user_id", ""),
+            patient_code=profile.get("patient_code", ""),
+        )
+
+    if not task_index:
+        raise BizError(
+            ErrorCode.TASK_REPO_EMPTY,
+            user_id=profile.get("user_id", ""),
+            patient_code=profile.get("patient_code", ""),
+        )
+
+    # --- 2️⃣ 统计 (l1, l2) ---
+    counter: Dict[Tuple[int, int], int] = defaultdict(int)
+    total = 0
+    valid_task_cnt = 0
+
+    for item in last_84_days_task:
+
+        if not isinstance(item, str) or "_" not in item:
+            logger.warning(f"[BRAIN_DIST] invalid task format: {item}")
+            continue
+
+        task_id = item.split("_", 1)[0]
+        task_obj = task_index.get(task_id)
+
+        if not task_obj:
+            logger.warning(f"[BRAIN_DIST] task_id={task_id} not found")
+            continue
+
+        if not task_obj.brain_coord:
+            continue
+
+        valid_task_cnt += 1
+
+        for l1, l2 in task_obj.brain_coord:
+            counter[(l1, l2)] += 1
+            total += 1
+
+    logger.debug(
+        f"[BRAIN_DIST] valid_tasks={valid_task_cnt}, total_coords={total}"
+    )
+
+    # --- 3️⃣ 构建分布 ---
+    brain_distribution: List[Dict[str, Any]] = []
+
+    for (l1, l2), count in counter.items():
+        brain_distribution.append(
+            {
+                "l1": int(l1),
+                "l2": int(l2),
+                "count": int(count),
+                "ratio": round(count / total, 3),  # 保留3位小数
+            }
+        )
+
+    # --- 4️⃣ Level1 汇总 ---
+    level1_counter: Dict[int, int] = defaultdict(int)
+
+    for item in brain_distribution:
+        level1_counter[item["l1"]] += item["count"]
+
+    level1_distribution = {
+        int(k): int(v) for k, v in level1_counter.items()
+    }
+
+    # --- 5️⃣ （可选）构建矩阵 ---
+    brain_matrix = None
+
+    if build_matrix:
+        brain_matrix = [[0 for _ in range(19)] for _ in range(4)]
+
+        for (l1, l2), count in counter.items():
+            brain_matrix[l1][l2] = int(count)
+
+    # --- 6️⃣ 写入画像 ---
+    enriched_profile["brain_distribution"] = brain_distribution
+    print(brain_distribution)
+    enriched_profile["level1_distribution"] = level1_distribution
+
+    if build_matrix:
+        enriched_profile["brain_matrix"] = brain_matrix
+
+    logger.debug(
+        f"[BRAIN_DIST] build complete for user_id={profile.get('user_id')}"
     )
 
     return enriched_profile
