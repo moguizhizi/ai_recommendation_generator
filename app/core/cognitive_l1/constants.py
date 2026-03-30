@@ -205,3 +205,9 @@ class ParadigmType(str, Enum):
     BATCH_MEMORY_MULTI_MATCH = "批量记忆多项匹配"
     UFOV_GO_NO_GO = "有效视野+go/no-go"
     FEATURE_INDUCTION_MATCH = "特征归纳匹配"
+
+L1_LIST = list(Level1BrainDomain)
+L2_LIST = list(Level2BrainDomain)
+
+L1_INDEX = {e.value: i for i, e in enumerate(L1_LIST)}
+L2_INDEX = {e.value: i for i, e in enumerate(L2_LIST)}
