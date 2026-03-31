@@ -60,10 +60,13 @@ USER_TYPE_MODULE_MAP = {
     ],
 }
 
-def enrich_user_profile_with_domain_histories(profile: dict) -> dict:
+def enrich_user_profile_with_domain_histories(
+    profile: dict, config: Dict[str, Any]
+) -> dict:
     """
     为用户画像补充各脑能力的连续历史序列
     """
+    min_history_len = int(config.get("score_prediction", {}).get("min_history_len", 3))
 
     def is_valid(value):
         return isinstance(value, Number)
@@ -97,6 +100,21 @@ def enrich_user_profile_with_domain_histories(profile: dict) -> dict:
             seq.append(val)
 
         histories[domain_value] = seq
+
+    insufficient_histories = {
+        domain: len(seq)
+        for domain, seq in histories.items()
+        if len(seq) < min_history_len + 1
+    }
+
+    if insufficient_histories:
+        raise BizError(
+            ErrorCode.NEW_USER_PLAN_NOT_AVAILABLE,
+            user_id=profile.get("user_id", ""),
+            patient_code=profile.get("patient_code", ""),
+            min_history_len=min_history_len,
+            insufficient_histories=insufficient_histories,
+        )
 
     # 👇 挂到 profile 上
     profile["domain_histories"] = histories
@@ -823,9 +841,7 @@ def build_score_prediction(
             profile=profile,
             level1_key=level1_key,
         )
-        if predicted is None or predicted <= historical:
-            predicted = simple_predict(historical)
-
+        
         predicted = Level1Score.clamp(predicted)
 
         return DimensionScorePrediction(
