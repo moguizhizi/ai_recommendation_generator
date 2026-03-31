@@ -831,6 +831,64 @@ def direct_horizon_forecast(
     pred = compute_M(pred, current, range_val, alpha_c=alpha_c)
     return pred
 
+def compute_baseline_prediction(
+    history: list[float],
+    current: float,
+    *,
+    horizon_weeks: int = 12,
+    min_decay: float = 5,  # 最小下降，防止完全不变
+) -> int:
+    """
+    无任务预测（基于历史波动幅度的下降）
+
+    逻辑：
+    - 用历史 max-min 表示波动能力
+    - 按 horizon / 历史长度 进行缩放
+    - 强制下降
+    """
+
+    if not history:
+        return int(round(current))
+
+    history_arr = np.array(history, dtype=float)
+
+    # ----------------------
+    # Step 1: 波动幅度
+    # ----------------------
+    range_val = history_arr.max() - history_arr.min()
+
+    # 防止全平（range=0）
+    range_val = max(range_val, min_decay)
+
+    # ----------------------
+    # Step 2: 历史长度
+    # ----------------------
+    hist_len = len(history_arr)
+
+    # 防止除0
+    hist_len = max(hist_len, 1)
+
+    # ----------------------
+    # Step 3: 下降幅度
+    # ----------------------
+    decay = (horizon_weeks / hist_len) * range_val
+
+    # 控制最小下降
+    decay = max(decay, min_decay)
+
+    # ----------------------
+    # Step 4: 计算 baseline
+    # ----------------------
+    baseline = current - decay
+
+    # ----------------------
+    # Step 5: 约束
+    # ----------------------
+    baseline = min(baseline, current)  # 必须下降
+    baseline = max(baseline, 0)        # 下界
+
+    return int(round(baseline))
+
 
 def build_score_prediction(
     profile: dict,
@@ -873,7 +931,7 @@ def build_score_prediction(
         history = history_seq[:-1]
 
         historical = int(level1_scores.get(level1_key, current))
-
+        baseline_predicted = compute_baseline_prediction(history, current)
         predicted = direct_horizon_forecast(
             model=model_manager.get(model_key),
             history=history,
@@ -889,6 +947,7 @@ def build_score_prediction(
         return DimensionScorePrediction(
             historical_score=historical,
             predicted_score=predicted,
+            baseline_predicted_score=baseline_predicted,
         )
 
     return ScorePrediction(
@@ -1141,16 +1200,16 @@ def render_plan_text(plan: AIRecPlanData) -> str:
     lines.append("")
 
     lines.append(
-        f"注意力完成度：{sp.attention.historical_score} → {sp.attention.predicted_score}"
+        f"注意力完成度：{sp.attention.historical_score} → {sp.attention.predicted_score}（无训练：{sp.attention.baseline_predicted_score}）"
     )
     lines.append(
-        f"记忆力完成度：{sp.memory.historical_score} → {sp.memory.predicted_score}"
+        f"记忆力完成度：{sp.memory.historical_score} → {sp.memory.predicted_score}（无训练：{sp.memory.baseline_predicted_score}）"
     )
     lines.append(
-        f"执行控制完成度：{sp.executive_control.historical_score} → {sp.executive_control.predicted_score}"
+        f"执行控制完成度：{sp.executive_control.historical_score} → {sp.executive_control.predicted_score}（无训练：{sp.executive_control.baseline_predicted_score}）"
     )
     lines.append(
-        f"感知觉完成度：{sp.perception.historical_score} → {sp.perception.predicted_score}"
+        f"感知觉完成度：{sp.perception.historical_score} → {sp.perception.predicted_score}（无训练：{sp.perception.baseline_predicted_score}）"
     )
 
     lines.append("")
