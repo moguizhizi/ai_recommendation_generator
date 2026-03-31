@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from app.core.constants import UserType
 from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse
 from app.services.plan_rule_engine import (
+    build_L2_brain_ability_treemap,
     build_advantage_user_modules,
     build_growth_user_modules,
     build_potential_user_modules,
@@ -54,6 +55,7 @@ def generate_ai_plan(
 
     fixed_templates = get_fixed_templates(profile)
     level2_to_level1 = build_level2_to_level1_map(task_repo)
+    build_L2_brain_ability_treemap(profile, task_repo)
 
     user_type: UserType = profile["user_type"]
 

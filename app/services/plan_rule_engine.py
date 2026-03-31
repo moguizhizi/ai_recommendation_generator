@@ -1,7 +1,9 @@
 # app/services/plan_rule_engine.py
 import random
 import pandas as pd
+import numpy as np
 import math
+from app.core.cognitive_l1.constants import L1_INDEX, Level2BrainDomain
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
     Level1BrainDomain,
@@ -33,6 +35,7 @@ from llm.base import BaseLLM
 
 from utils.logger import get_logger
 from models.model_factory import ModelManager
+from collections import defaultdict
 
 logger = get_logger(__name__)
 
@@ -254,7 +257,6 @@ def enrich_user_profile_with_brain_distribution(
 
     # --- 6️⃣ 写入画像 ---
     enriched_profile["brain_distribution"] = brain_distribution
-    print(brain_distribution)
     enriched_profile["level1_distribution"] = level1_distribution
 
     if build_matrix:
@@ -765,6 +767,152 @@ def build_score_prediction(
         executive_control=build_dim(Level1BrainDomain.EXECUTIVE.value),
         perception=build_dim(Level1BrainDomain.PERCEPTION.value),
     )
+
+# ===============================
+# 1️⃣ 构建目标分布矩阵
+# ===============================
+def build_simple_target_matrix(
+    profile: Dict[str, Any],
+    brain_distribution: List[Dict[str, Any]],
+) -> np.ndarray:
+    """
+    构建 4x19 目标矩阵
+    """
+
+    matrix = np.zeros((len(Level1BrainDomain), len(Level2BrainDomain)))  # 4x19 矩阵
+
+    # --- 1. L1弱项权重 ---
+    l1_scores = profile["latest_level1_scores"]  
+    max_score = max(l1_scores.values())
+
+    l1_weight = {
+        L1_INDEX[k]: max_score - v + 1
+        for k, v in l1_scores.items()
+        if k in L1_INDEX
+    }
+
+    # --- 2. 历史分布 ---
+    history = {
+        (item["l1"], item["l2"]): item["ratio"]
+        for item in brain_distribution
+    }
+
+    # --- 3. 填充矩阵 ---
+    for l1 in range(len(Level1BrainDomain)):
+        for l2 in range(len(Level2BrainDomain)):
+            penalty = 1 - history.get((l1, l2), 0)
+            matrix[l1][l2] = l1_weight.get(l1, 1) * penalty
+
+    # --- 4. 归一化 ---
+    total = matrix.sum()
+    if total > 0:
+        matrix = matrix / total
+
+    return matrix
+
+# ===============================
+# 2️⃣ task打分
+# ===============================
+def score_task(task, target_matrix: np.ndarray) -> float:
+    """
+    task: 你的 Task 对象（必须有 brain_coord）
+    """
+
+    if not task.brain_coord:
+        return 0.0
+
+    return sum(
+        target_matrix[l1][l2]
+        for l1, l2 in task.brain_coord
+    )
+
+
+# ===============================
+# 3️⃣ 推荐任务
+# ===============================
+def recommend_tasks(
+    task_list: List[Task],
+    target_matrix: np.ndarray,
+    k: int = 420,
+) -> List[Task]:
+    """
+    按权重随机推荐任务
+    """
+
+    scores = []
+
+    for task in task_list:
+        s = score_task(task, target_matrix)
+
+        # 防止全0
+        scores.append(max(s, 1e-6))
+
+    return random.choices(task_list, weights=scores, k=k)
+
+
+
+def compute_l2_distribution(recommended_tasks: List[Task]):
+    counter = defaultdict(int)
+    total = 0
+
+    for task in recommended_tasks:
+        if task.l2_index is None:
+            continue
+
+        counter[task.l2_index] += 1
+        total += 1
+
+    if total == 0:
+        return []
+
+    # 构建结果
+    result = []
+    for l2, count in counter.items():
+        result.append({
+            "l2": int(l2),
+            "count": int(count),
+            "ratio": round(count / total, 3)  # ✅ 保留3位小数
+        })
+
+    # 可选：按占比排序
+    result.sort(key=lambda x: x["ratio"], reverse=True)
+
+    return result
+
+
+def build_L2_brain_ability_treemap(
+    profile: Dict[str, Any],
+    task_repo: Dict[str, Any],
+    k: int = 420,
+) -> List[Any]:
+    """
+    一键生成推荐任务
+    """
+
+    task_list = task_repo["task_list"]
+
+    # 👉 必须提前算好的（你之前已经做了）
+    brain_distribution = profile.get("brain_distribution")
+
+    if not brain_distribution:
+        raise ValueError("brain_distribution 不能为空，请先执行分布统计")
+
+    # --- 1. 构建目标矩阵 ---
+    target_matrix = build_simple_target_matrix(
+        profile, brain_distribution
+    )
+
+    # --- 2. 推荐 ---
+    recommended_tasks = recommend_tasks(
+        task_list,
+        target_matrix,
+        k=k,
+    )
+
+    result = compute_l2_distribution(recommended_tasks)
+
+    return recommended_tasks
+
 
 
 def render_plan_text(plan: AIRecPlanData) -> str:
