@@ -5,13 +5,13 @@ from typing import Literal
 
 
 class DimensionScorePrediction(BaseModel):
-    historical_score: float = Field(
+    historical_score: int = Field(
         ...,
         title="历史分数",
         description="用于预测的最近阶段历史分数（如最近一次或最近周期平均）",
     )
 
-    predicted_score: float = Field(
+    predicted_score: int = Field(
         ..., title="预测分数", description="基于训练趋势预测的下一阶段分数"
     )
 

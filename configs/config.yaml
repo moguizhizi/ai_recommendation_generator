@@ -18,6 +18,7 @@ score_prediction:
   alpha_c: 150
 
   lightgbm:
+    feature_columns: checkpoints/cognitive_l1/feature_columns.json
     checkpoints:
       perception: checkpoints/cognitive_l1/perception_lightgbm.txt
       attention: checkpoints/cognitive_l1/attention_lightgbm.txt
