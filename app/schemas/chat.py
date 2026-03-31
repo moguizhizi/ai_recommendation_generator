@@ -12,7 +12,15 @@ class DimensionScorePrediction(BaseModel):
     )
 
     predicted_score: int = Field(
-        ..., title="预测分数", description="基于训练趋势预测的下一阶段分数"
+        ...,
+        title="预测分数",
+        description="基于推荐任务干预后的预测分数",
+    )
+
+    baseline_predicted_score: int = Field(
+        ...,
+        title="无任务预测分数",
+        description="在没有推荐任务干预情况下，基于历史趋势的自然预测分数",
     )
 
 
