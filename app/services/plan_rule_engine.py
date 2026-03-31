@@ -2,7 +2,7 @@
 import random
 import pandas as pd
 import numpy as np
-import math
+from numbers import Number
 from app.core.cognitive_l1.constants import L1_INDEX, L2_INDEX_REVERSE, Level2BrainDomain
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
@@ -59,6 +59,49 @@ USER_TYPE_MODULE_MAP = {
         ModuleName.STEP_UP,
     ],
 }
+
+def enrich_user_profile_with_domain_histories(profile: dict) -> dict:
+    """
+    为用户画像补充各脑能力的连续历史序列
+    """
+
+    def is_valid(value):
+        return isinstance(value, Number)
+
+    histories = {}
+
+    for domain in Level1BrainDomain:
+        domain_value = domain.value
+        seq = []
+
+        # latest
+        latest_val = profile["latest_level1_scores"].get(domain_value)
+
+        if not is_valid(latest_val):
+            histories[domain_value] = []
+            continue
+
+        seq.append(latest_val)
+
+        # week1 ~ week11
+        for week in range(1, 12):
+            week_scores = profile.get(f"week{week}_level1_scores")
+            if not week_scores:
+                break
+
+            val = week_scores.get(domain_value)
+
+            if not is_valid(val):
+                break
+
+            seq.append(val)
+
+        histories[domain_value] = seq
+
+    # 👇 挂到 profile 上
+    profile["domain_histories"] = histories
+
+    return profile
 
 
 def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
@@ -656,104 +699,116 @@ def get_fixed_templates(profile: dict) -> dict:
     return templates.get(profile["user_type"], templates[UserType.GROWTH.value])
 
 
-def predict_next_week(model, profile: dict, level1_key: str):
-    """
-    根据 profile 中最近三周一级脑能力分数预测下一周
-    """
+def build_features(history: list[float], max_history_len: int) -> dict:
+    arr = np.array(history, dtype=float)
+    feats = {}
 
-    logger.info("Start next-week prediction")
+    for i in range(1, max_history_len + 1):
+        feats[f'lag_{i}'] = arr[-i] if len(arr) >= i else np.nan
 
-    latest_scores = profile.get("latest_level1_scores", {})
-    week1_scores = profile.get("week1_level1_scores", {})
-    week2_scores = profile.get("week2_level1_scores", {})
+    feats['mean_4'] = arr[-4:].mean() if len(arr) >= 4 else arr.mean()
+    feats['mean_12'] = arr[-12:].mean() if len(arr) >= 12 else arr.mean()
+    feats['std_12'] = arr[-12:].std() if len(arr) >= 12 else arr.std()
+    feats['min'] = arr.min()
+    feats['max'] = arr.max()
 
-    # 取三周数据（顺序：week2 -> week1 -> latest）
-    raw_scores = [
-        week2_scores.get(level1_key),
-        week1_scores.get(level1_key),
-        latest_scores.get(level1_key),
-    ]
-
-    logger.debug(f"Raw scores from profile: {raw_scores}")
-
-    # 过滤 None
-    scores = [s for s in raw_scores if s is not None]
-
-    if len(scores) < 3:
-        logger.warning(f"Insufficient valid scores for prediction: {scores}")
-        return None
-
-    logger.debug(f"Valid scores used for feature construction: {scores}")
-
-    features = {}
-
-    features["lag1"] = scores[-1]
-    features["lag2"] = scores[-2]
-    features["lag3"] = scores[-3]
-
-    features["mean_last3"] = sum(scores) / 3
-    features["std_last3"] = pd.Series(scores).std()
-    features["max_last3"] = max(scores)
-    features["min_last3"] = min(scores)
-
-    features["trend_last3"] = scores[-1] - scores[-3]
-
-    logger.debug(f"Constructed features: {features}")
-
-    X = pd.DataFrame([features])
-
-    logger.debug(f"Feature dataframe for prediction: {X.to_dict(orient='records')}")
-
-    pred = model.predict(X)[0]
-
-    # 上取整
-    pred = math.ceil(pred)
-
-    logger.info(f"Prediction result for {level1_key}: {pred}")
-
-    return pred
-
-
-def simple_predict(score: int) -> int:
-    if score < 60:
-        inc = random.randint(4, 8)
-    elif score < 80:
-        inc = random.randint(2, 4)
+    if len(arr) >= 2:
+        x = np.arange(len(arr))
+        feats['trend'] = np.polyfit(x, arr, 1)[0]
     else:
-        inc = random.randint(1, 2)
+        feats['trend'] = 0.0
 
-    return score + inc
+    feats['growth_4'] = arr[-1] - arr[-4] if len(arr) >= 4 else 0.0
+    feats['growth_12'] = arr[-1] - arr[-12] if len(arr) >= 12 else 0.0
+    feats['last'] = arr[-1]
+    feats['diff_1'] = arr[-1] - arr[-2] if len(arr) >= 2 else 0.0
+    feats['diff_2'] = arr[-2] - arr[-3] if len(arr) >= 3 else 0.0
+    feats['diff_last_vs_mean_4'] = arr[-1] - (arr[-4:].mean() if len(arr) >= 4 else arr.mean())
+    feats['diff_mean_4_12'] = (arr[-4:].mean() - arr[-12:].mean()) if len(arr) >= 12 else 0.0
+    feats['range_4'] = (arr[-4:].max() - arr[-4:].min()) if len(arr) >= 4 else (arr.max() - arr.min())
+    feats['range_12'] = (arr[-12:].max() - arr[-12:].min()) if len(arr) >= 12 else (arr.max() - arr.min())
+    feats['std_ratio_4_12'] = ((arr[-4:].std() + 1e-6) / (arr[-12:].std() + 1e-6)) if len(arr) >= 12 else 1.0
+    feats['trend_4'] = np.polyfit(np.arange(4), arr[-4:], 1)[0] if len(arr) >= 4 else feats['trend']
+    feats['trend_8'] = np.polyfit(np.arange(8), arr[-8:], 1)[0] if len(arr) >= 8 else feats['trend']
+    feats['last_vs_min'] = arr[-1] - arr.min()
+    feats['last_vs_max'] = arr[-1] - arr.max()
 
+    return feats
 
-# def build_score_prediction(
-#     profile: dict, fixed_templates: dict, model_manager: ModelManager
-# ) -> ScorePrediction:
-#     level1_scores = profile.get("latest_level1_scores", {})
-#
-#     def build_dim(level1_key: str) -> DimensionScorePrediction:
-#         historical = float(level1_scores.get(level1_key, 0))
-#         predicted = predict_next_week(
-#             model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
-#             profile=profile,
-#             level1_key=level1_key,
-#         )
-#         if predicted is None or predicted <= historical:
-#             predicted = simple_predict(historical)
-#
-#         predicted = Level1Score.clamp(predicted)
-#
-#         return DimensionScorePrediction(
-#             historical_score=historical,
-#             predicted_score=predicted,
-#         )
-#
-#     return ScorePrediction(
-#         summary=fixed_templates["score_prediction"],
-#         attention=build_dim(Level1BrainDomain.ATTENTION.value),
-#         memory=build_dim(Level1BrainDomain.MEMORY.value),
-#         executive_control=build_dim(Level1BrainDomain.EXECUTIVE.value),
-#         perception=build_dim(Level1BrainDomain.PERCEPTION.value),
-#     )
+def compute_M(N, current, range_val, alpha_c=150):
+    """
+    计算最终修正值 M
+
+    约束：
+    - M > current
+    - M < 160
+    - current 越大 → 增长越保守
+    """
+
+    # --- Step 0: 修正 range_val（关键） ---
+    range_val = max(range_val, 0.0)
+
+    # --- Step 1: 计算 k ---
+    k = compute_alpha(current, c=alpha_c)
+
+    # --- Step 2: 防止预测下降 ---
+    # 至少增长一个极小值 or range_val
+    min_increase = max(1e-6, range_val)
+    N = min(N, current + min_increase)
+
+    # --- Step 3: 上界控制 ---
+    max_cap = 160 - 1  # 你这里留了 buffer（很好）
+
+    # 可增长空间
+    delta = min(N - current, max_cap - current)
+
+    # --- Step 4: 插值 ---
+    M = current + k * delta
+
+    # --- Step 5: 下界保护 ---
+    M = max(M, current + 1e-6)
+
+    return M
+
+def compute_alpha(current, c=150, s=10):
+    """
+    计算权重 k ∈ (0,1)
+
+    参数：
+    - current: 当前值
+    - c: 拐点（越小越保守）
+    - s: 平滑程度（越小下降越快）
+
+    性质：
+    - current ↑ → k ↓
+    - current → 160 → k → 0
+    """
+    return 1 / (1 + np.exp((current - c) / s))
+
+def direct_horizon_forecast(
+    model,
+    history: list[float],
+    current: float,
+    max_history_len: int,
+    feature_cols: list[str],
+    alpha_c: float,
+) -> float:
+    effective_history = history[-max_history_len:]
+
+    feats = build_features(effective_history, max_history_len)
+    feats['hist_len'] = len(effective_history)
+    feats['current'] = current
+
+    # --- 计算 range ---
+    if len(effective_history) > 0:
+        range_val = max(effective_history) - min(effective_history)
+    else:
+        range_val = 0.0
+
+    X = pd.DataFrame([feats]).reindex(columns=feature_cols, fill_value=np.nan)
+    pred = float(model.predict(X)[0])
+    pred = compute_M(pred, current, range_val, alpha_c=alpha_c)
+    return pred
 
 
 def build_score_prediction(
@@ -762,8 +817,16 @@ def build_score_prediction(
     level1_scores = profile.get("latest_level1_scores", {})
 
     def build_dim(level1_key: str) -> DimensionScorePrediction:
-        historical = float(level1_scores.get(level1_key, 100))
-        predicted = Level1Score.clamp(max(historical + 2, 100))
+        historical = float(level1_scores.get(level1_key, 0))
+        predicted = predict_next_week(
+            model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
+            profile=profile,
+            level1_key=level1_key,
+        )
+        if predicted is None or predicted <= historical:
+            predicted = simple_predict(historical)
+
+        predicted = Level1Score.clamp(predicted)
 
         return DimensionScorePrediction(
             historical_score=historical,
