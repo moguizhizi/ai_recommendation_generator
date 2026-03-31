@@ -1,8 +1,10 @@
 # app/services/plan_rule_engine.py
+import json
 import random
 import pandas as pd
 import numpy as np
 from numbers import Number
+from pathlib import Path
 from app.core.cognitive_l1.constants import L1_INDEX, L2_INDEX_REVERSE, Level2BrainDomain
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
@@ -119,10 +121,6 @@ def enrich_user_profile_with_domain_histories(
 
     # 👇 挂到 profile 上
     profile["domain_histories"] = histories
-
-    print(histories)
-
-    exit(0)
 
     return profile
 
@@ -835,27 +833,58 @@ def direct_horizon_forecast(
 
 
 def build_score_prediction(
-    profile: dict, fixed_templates: dict, model_manager: ModelManager
+    profile: dict,
+    fixed_templates: dict,
+    model_manager: ModelManager,
+    config: Dict[str, Any],
 ) -> ScorePrediction:
     level1_scores = profile.get("latest_level1_scores", {})
+    score_prediction_config = config.get("score_prediction", {})
+    max_history_len = int(score_prediction_config.get("max_history_len", 20))
+    alpha_c = float(score_prediction_config.get("alpha_c", 150))
+    lightgbm_config = score_prediction_config.get("lightgbm", {})
+    feature_columns_path = Path(
+        lightgbm_config.get(
+            "feature_columns",
+            "checkpoints/cognitive_l1/feature_columns.json",
+        )
+    )
 
-    def build_dim(level1_key: str) -> DimensionScorePrediction:
-        historical = float(level1_scores.get(level1_key, 0))
-        predicted = predict_next_week(
-            model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
-            profile=profile,
-            level1_key=level1_key,
+    if not feature_columns_path.exists():
+        raise FileNotFoundError(
+            f"Feature columns file not found: {feature_columns_path}"
         )
 
-        # direct_horizon_forecast(
-        #     model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
-        #     history=profile.get("historical_level1_scores", {}).get(level1_key, []),
-        #     current=historical,
-        #     max_history_len=20,
-        #     feature_cols=LEVEL1_FEATURE_COLS,
-        #     alpha_c=ScoreThreshold.ADVANTAGE_LINE,  # 你可以根据需要
-        
+    with open(feature_columns_path, "r", encoding="utf-8") as f:
+        feature_columns_map = json.load(f)
+
+    def build_dim(level1_key: str) -> DimensionScorePrediction:
+        history_seq = profile.get("domain_histories", {}).get(level1_key, [])
+        model_key = LEVEL1_DOMAIN_KEY_MAP[level1_key]
+        feature_cols = feature_columns_map.get(model_key)
+
+        if len(history_seq) < 2:
+            raise ValueError(f"Insufficient history for domain: {level1_key}")
+
+        if not feature_cols:
+            raise ValueError(f"Missing feature columns for domain: {model_key}")
+
+        current = float(history_seq[-1])
+        history = history_seq[:-1]
+
+        historical = int(level1_scores.get(level1_key, current))
+
+        predicted = direct_horizon_forecast(
+            model=model_manager.get(model_key),
+            history=history,
+            current=current,
+            max_history_len=max_history_len,
+            feature_cols=feature_cols,
+            alpha_c=alpha_c,
+        )
+
         predicted = Level1Score.clamp(predicted)
+        predicted = int(round(predicted))
 
         return DimensionScorePrediction(
             historical_score=historical,

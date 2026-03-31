@@ -68,7 +68,12 @@ def generate_ai_plan(
     module_builder = USER_TYPE_MODULE_BUILDER.get(user_type, build_growth_user_modules)
     modules = module_builder(profile, level2_to_level1, llm, l1_task_map)
 
-    score_prediction = build_score_prediction(profile, fixed_templates, model_manager)
+    score_prediction = build_score_prediction(
+        profile,
+        fixed_templates,
+        model_manager,
+        config=config,
+    )
 
     # 构建核心数据对象
     plan_data = AIRecPlanData(
