@@ -99,6 +99,7 @@ def enrich_user_profile_with_domain_histories(
 
             seq.append(val)
 
+        seq = seq[::-1]  # 倒序，保证时间顺序从远到近
         histories[domain_value] = seq
 
     insufficient_histories = {
@@ -118,6 +119,10 @@ def enrich_user_profile_with_domain_histories(
 
     # 👇 挂到 profile 上
     profile["domain_histories"] = histories
+
+    print(histories)
+
+    exit(0)
 
     return profile
 
@@ -841,6 +846,14 @@ def build_score_prediction(
             profile=profile,
             level1_key=level1_key,
         )
+
+        # direct_horizon_forecast(
+        #     model=model_manager.get(LEVEL1_DOMAIN_KEY_MAP[level1_key]),
+        #     history=profile.get("historical_level1_scores", {}).get(level1_key, []),
+        #     current=historical,
+        #     max_history_len=20,
+        #     feature_cols=LEVEL1_FEATURE_COLS,
+        #     alpha_c=ScoreThreshold.ADVANTAGE_LINE,  # 你可以根据需要
         
         predicted = Level1Score.clamp(predicted)
 
