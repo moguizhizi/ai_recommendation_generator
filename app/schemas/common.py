@@ -3,6 +3,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List, Tuple
 
 
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Optional, List, Tuple
+
+
 class Task(BaseModel):
 
     task_id: str = Field(..., title="任务ID")
@@ -24,9 +28,16 @@ class Task(BaseModel):
 
     training_time: Optional[int] = Field(None, title="训练时间")
 
+    # ✅ 坐标
     brain_coord: Optional[List[Tuple[int, int]]] = Field(
         default=None,
         title="脑能力坐标 (L1, L2)"
+    )
+
+    # ✅ 新增：二级脑能力索引
+    l2_index: Optional[int] = Field(
+        default=None,
+        title="二级脑能力索引"
     )
 
     @field_validator("task_id", mode="before")
@@ -42,6 +53,7 @@ class Task(BaseModel):
 
         if not raw:
             self.brain_coord = []
+            self.l2_index = None
             return self
 
         # ✅ 只取第一个
@@ -49,17 +61,21 @@ class Task(BaseModel):
 
         if "_" not in first_item:
             self.brain_coord = []
+            self.l2_index = None
             return self
 
         l1_cn, l2_cn = first_item.split("_", 1)
 
         if l1_cn not in L1_INDEX or l2_cn not in L2_INDEX:
             self.brain_coord = []
+            self.l2_index = None
             return self
 
-        self.brain_coord = [(
-            L1_INDEX[l1_cn],
-            L2_INDEX[l2_cn]
-        )]
+        l1_idx = L1_INDEX[l1_cn]
+        l2_idx = L2_INDEX[l2_cn]
+
+        # ✅ 写入
+        self.brain_coord = [(l1_idx, l2_idx)]
+        self.l2_index = l2_idx
 
         return self

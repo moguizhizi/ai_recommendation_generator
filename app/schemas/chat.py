@@ -68,6 +68,11 @@ class TrainingModule(BaseModel):
     )
     items: List[TrainingItem] = Field(..., title="模块内训练项列表")
 
+class L2AbilityStat(BaseModel):
+    name: str = Field(..., title="二级脑能力名称")
+    count: int = Field(..., title="任务数量")
+    ratio: float = Field(..., title="占比")
+
 
 class AIRecPlanData(BaseModel):
     user_type: Literal["优势倾向型", "潜能倾向型", "专项优势型", "蓄力成长型"]
@@ -112,6 +117,12 @@ class AIRecPlanData(BaseModel):
         ...,
         title="LLM 原始输出",
         description="模型原始生成全文，用于审计与调试",
+    )
+
+    l2_ability_distribution: List[L2AbilityStat] = Field(
+        ...,
+        title="二级脑能力分布",
+        description="推荐任务中各二级脑能力的占比与数量"
     )
 
 

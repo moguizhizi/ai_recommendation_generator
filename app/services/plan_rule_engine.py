@@ -1,7 +1,9 @@
 # app/services/plan_rule_engine.py
 import random
 import pandas as pd
+import numpy as np
 import math
+from app.core.cognitive_l1.constants import L1_INDEX, L2_INDEX_REVERSE, Level2BrainDomain
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
     Level1BrainDomain,
@@ -33,6 +35,7 @@ from llm.base import BaseLLM
 
 from utils.logger import get_logger
 from models.model_factory import ModelManager
+from collections import defaultdict
 
 logger = get_logger(__name__)
 
@@ -254,7 +257,6 @@ def enrich_user_profile_with_brain_distribution(
 
     # --- 6️⃣ 写入画像 ---
     enriched_profile["brain_distribution"] = brain_distribution
-    print(brain_distribution)
     enriched_profile["level1_distribution"] = level1_distribution
 
     if build_matrix:
@@ -766,6 +768,158 @@ def build_score_prediction(
         perception=build_dim(Level1BrainDomain.PERCEPTION.value),
     )
 
+# ===============================
+# 1️⃣ 构建目标分布矩阵
+# ===============================
+def build_simple_target_matrix(
+    profile: Dict[str, Any],
+    brain_distribution: List[Dict[str, Any]],
+) -> np.ndarray:
+    """
+    构建 4x19 目标矩阵
+    """
+
+    matrix = np.zeros((len(Level1BrainDomain), len(Level2BrainDomain)))  # 4x19 矩阵
+
+    # --- 1. L1弱项权重 ---
+    l1_scores = profile["latest_level1_scores"]  
+    max_score = max(l1_scores.values())
+
+    l1_weight = {
+        L1_INDEX[k]: max_score - v + 1
+        for k, v in l1_scores.items()
+        if k in L1_INDEX
+    }
+
+    # --- 2. 历史分布 ---
+    history = {
+        (item["l1"], item["l2"]): item["ratio"]
+        for item in brain_distribution
+    }
+
+    # --- 3. 填充矩阵 ---
+    for l1 in range(len(Level1BrainDomain)):
+        for l2 in range(len(Level2BrainDomain)):
+            penalty = 1 - history.get((l1, l2), 0)
+            matrix[l1][l2] = l1_weight.get(l1, 1) * penalty
+
+    # --- 4. 归一化 ---
+    total = matrix.sum()
+    if total > 0:
+        matrix = matrix / total
+
+    return matrix
+
+# ===============================
+# 2️⃣ task打分
+# ===============================
+def score_task(task, target_matrix: np.ndarray) -> float:
+    """
+    task: 你的 Task 对象（必须有 brain_coord）
+    """
+
+    if not task.brain_coord:
+        return 0.0
+
+    return sum(
+        target_matrix[l1][l2]
+        for l1, l2 in task.brain_coord
+    )
+
+
+# ===============================
+# 3️⃣ 推荐任务
+# ===============================
+def recommend_tasks(
+    task_list: List[Task],
+    target_matrix: np.ndarray,
+    k: int = 420,
+) -> List[Task]:
+    """
+    按权重随机推荐任务
+    """
+
+    scores = []
+
+    for task in task_list:
+        s = score_task(task, target_matrix)
+
+        # 防止全0
+        scores.append(max(s, 1e-6))
+
+    return random.choices(task_list, weights=scores, k=k)
+
+
+def build_l2_distribution_from_tasks(
+    tasks: List[Task],
+) -> List[Dict[str, Any]]:
+    """
+    统计推荐任务中的二级脑能力分布
+    返回：[{name, count, ratio}]
+    """
+
+    counter = defaultdict(int)
+    total = 0
+
+    for task in tasks:
+        if task.l2_index is None:
+            continue
+
+        counter[task.l2_index] += 1
+        total += 1
+
+    if total == 0:
+        return []
+
+    result = []
+
+    for l2_idx, count in counter.items():
+        result.append({
+            "name": L2_INDEX_REVERSE.get(l2_idx, f"unknown_{l2_idx}"),
+            "count": int(count),
+            "ratio": round(count / total, 3)  # ✅ 保留3位小数
+        })
+
+    # ✅ 可选：按占比排序
+    result.sort(key=lambda x: x["ratio"], reverse=True)
+
+    return result
+
+
+def build_L2_brain_ability_treemap(
+    profile: Dict[str, Any],
+    task_repo: Dict[str, Any],
+    k: int = 420,
+):
+    task_list = task_repo["task_list"]
+
+    brain_distribution = profile.get("brain_distribution")
+    if not brain_distribution:
+        raise ValueError("brain_distribution 不能为空")
+
+    # 1️⃣ 目标矩阵
+    target_matrix = build_simple_target_matrix(
+        profile, brain_distribution
+    )
+
+    # 2️⃣ 推荐任务
+    recommended_tasks = recommend_tasks(
+        task_list,
+        target_matrix,
+        k=k,
+    )
+
+    # 3️⃣ 统计 L2 分布
+    l2_distribution = build_l2_distribution_from_tasks(
+        recommended_tasks
+    )
+
+    return {
+        "recommended_tasks": recommended_tasks,
+        "l2_distribution": l2_distribution
+    }
+
+
 
 def render_plan_text(plan: AIRecPlanData) -> str:
     lines = []
@@ -790,15 +944,24 @@ def render_plan_text(plan: AIRecPlanData) -> str:
             lines.append(f"    任务名称：{item.tasks}")
             lines.append(f"    训练频次：{item.frequency}")
             lines.append(f"    训练目标：{item.goal}")
-
-            # if item.description:
-            #     lines.append(f"        说明：{item.description}")
-
             lines.append("")
 
-    # 3️⃣ 分数预测
+    # ✅ 3️⃣ 二级脑能力分布（新增）
+    if plan.l2_ability_distribution:
+        lines.append("3）训练能力分布说明")
+        lines.append("本阶段训练将重点覆盖以下脑能力：")
+
+        for item in plan.l2_ability_distribution:
+            percent = round(item.ratio * 100, 1)
+            lines.append(
+                f"- {item.name}：{item.count}次（占比 {percent}%）"
+            )
+
+        lines.append("")
+
+    # 4️⃣ 分数预测（序号顺延）
     sp = plan.score_prediction
-    lines.append("3）AI分数预测")
+    lines.append("4）AI分数预测")
     lines.append(sp.summary)
     lines.append("")
 
@@ -819,14 +982,14 @@ def render_plan_text(plan: AIRecPlanData) -> str:
     lines.append("▲预测数据仅供参考，以孩子最终训练数据为准")
     lines.append("")
 
-    # 4️⃣ 居家建议
-    lines.append("4）居家训练建议")
+    # 5️⃣ 居家建议
+    lines.append("5）居家训练建议")
     for advice in plan.home_advice:
         lines.append(f"- {advice}")
     lines.append("")
 
-    # 5️⃣ 效果追踪
-    lines.append("5）效果追踪与动态调整")
+    # 6️⃣ 效果追踪
+    lines.append("6）效果追踪与动态调整")
     for item in plan.tracking_and_adjustment:
         lines.append(item)
 
