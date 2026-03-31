@@ -211,3 +211,7 @@ L2_LIST = list(Level2BrainDomain)
 
 L1_INDEX = {e.value: i for i, e in enumerate(L1_LIST)}
 L2_INDEX = {e.value: i for i, e in enumerate(L2_LIST)}
+
+# 反向映射
+L1_INDEX_REVERSE = {v: k for k, v in L1_INDEX.items()}
+L2_INDEX_REVERSE = {v: k for k, v in L2_INDEX.items()}
