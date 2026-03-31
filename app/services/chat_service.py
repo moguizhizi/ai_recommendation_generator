@@ -15,6 +15,7 @@ from app.services.plan_rule_engine import (
     build_special_user_modules,
     enrich_profile_with_user_type,
     enrich_user_profile_with_brain_distribution,
+    enrich_user_profile_with_domain_histories,
     enrich_user_profile_with_tasks,
     get_fixed_templates,
     render_plan_text,
@@ -52,6 +53,7 @@ def generate_ai_plan(
     
     profile = enrich_user_profile_with_tasks(profile, task_repo)
     profile = enrich_user_profile_with_brain_distribution(profile, task_repo)
+    profile = enrich_user_profile_with_domain_histories(profile)
     profile = enrich_profile_with_user_type(profile)
 
     fixed_templates = get_fixed_templates(profile)
