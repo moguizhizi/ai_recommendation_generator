@@ -9,6 +9,7 @@ from app.services.plan_rule_engine import (
     build_L2_brain_ability_treemap,
     build_advantage_user_modules,
     build_growth_user_modules,
+    build_l1_task_map,
     build_potential_user_modules,
     build_score_prediction,
     build_special_user_modules,
@@ -56,16 +57,14 @@ def generate_ai_plan(
     fixed_templates = get_fixed_templates(profile)
     level2_to_level1 = build_level2_to_level1_map(task_repo)
     
-    treemap = build_L2_brain_ability_treemap(profile, task_repo)
-    l2_stats = [
-        L2AbilityStat(**item)
-        for item in treemap["l2_distribution"]
-    ]
+    recommended_tasks, l2_stats = build_L2_brain_ability_treemap(profile, task_repo)
+
+    l1_task_map = build_l1_task_map(recommended_tasks)
 
     user_type: UserType = profile["user_type"]
 
     module_builder = USER_TYPE_MODULE_BUILDER.get(user_type, build_growth_user_modules)
-    modules = module_builder(profile, level2_to_level1, llm)
+    modules = module_builder(profile, level2_to_level1, llm, l1_task_map)
 
     score_prediction = build_score_prediction(profile, fixed_templates, model_manager)
 

@@ -19,6 +19,7 @@ from app.core.errors.exceptions import BizError
 from app.schemas.chat import (
     AIRecPlanData,
     DimensionScorePrediction,
+    L2AbilityStat,
     ScorePrediction,
     TrainingItem,
     TrainingModule,
@@ -29,7 +30,7 @@ from app.services.modules_processor import (
     calc_difficulty,
     fetch_frequency,
     generate_goal_by_llm,
-    get_missed_tasks_grouped_by_paradigm,
+    get_recommended_tasks_grouped_by_paradigm,
 )
 from llm.base import BaseLLM
 
@@ -326,6 +327,7 @@ def build_user_modules_by_threshold(
     level2_to_level1: Dict[str, str],  # 保留参数避免外部报错，但不再使用
     threshold: int,
     llm: BaseLLM,
+    l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
 
     level1_scores: Dict[str, int] = enriched_profile.get("latest_level1_scores", {})
@@ -393,10 +395,10 @@ def build_user_modules_by_threshold(
     ) -> TrainingItem | None:
 
         ability_name_cn = level1_key
+        l1_recommended_tasks = l1_task_map[L1_INDEX[level1_key]]
 
-        paradigm_tasks = get_missed_tasks_grouped_by_paradigm(
-            level1_key,
-            weekly_missed_task_infos,
+        paradigm_tasks = get_recommended_tasks_grouped_by_paradigm(
+            l1_recommended_tasks,
         )
 
         if not paradigm_tasks:
@@ -490,6 +492,7 @@ def build_advantage_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
+    l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
     构建【优势倾向型】用户的训练模块结构
@@ -499,6 +502,7 @@ def build_advantage_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
         llm=llm,
+        l1_task_map=l1_task_map,
     )
 
 
@@ -506,6 +510,7 @@ def build_potential_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
+    l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
     构建【潜能倾向型】用户的训练模块结构
@@ -515,6 +520,7 @@ def build_potential_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.POTENTIAL_LINE,
         llm=llm,
+        l1_task_map=l1_task_map,
     )
 
 
@@ -522,6 +528,7 @@ def build_special_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
+    l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
     构建【专项优势型】用户的训练模块结构
@@ -531,6 +538,7 @@ def build_special_user_modules(
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.ADVANTAGE_LINE,
         llm=llm,
+        l1_task_map=l1_task_map,
     )
 
 
@@ -538,6 +546,7 @@ def build_growth_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
     llm: BaseLLM,
+    l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
     构建【蓄力成长型】用户的训练模块结构
@@ -546,7 +555,8 @@ def build_growth_user_modules(
         enriched_profile=enriched_profile,
         level2_to_level1=level2_to_level1,
         threshold=ScoreThreshold.POTENTIAL_LINE,
-        llm=llm,
+        llm=llm,   
+        l1_task_map=l1_task_map,
     )
 
 
@@ -768,6 +778,39 @@ def build_score_prediction(
         perception=build_dim(Level1BrainDomain.PERCEPTION.value),
     )
 
+def build_l1_task_map(recommended_tasks: List[Task]) -> Dict[int, List[Task]]:
+    """
+    构建：
+    {
+        l1_index: [Task, Task, ...]  # 去重
+    }
+    """
+
+    l1_task_map: Dict[int, Dict[str, Task]] = {}
+
+    for task in recommended_tasks:
+
+        # 跳过无效
+        if task.l1_index is None:
+            continue
+
+        l1 = task.l1_index
+
+        # 初始化
+        if l1 not in l1_task_map:
+            l1_task_map[l1] = {}
+
+        # ✅ 用 task_id 去重
+        l1_task_map[l1][task.task_id] = task
+
+    # ✅ 转成 List[Task]
+    result: Dict[int, List[Task]] = {
+        l1: list(task_dict.values())
+        for l1, task_dict in l1_task_map.items()
+    }
+
+    return result
+
 # ===============================
 # 1️⃣ 构建目标分布矩阵
 # ===============================
@@ -890,7 +933,15 @@ def build_L2_brain_ability_treemap(
     profile: Dict[str, Any],
     task_repo: Dict[str, Any],
     k: int = 420,
-):
+) -> Tuple[List[Task], List[L2AbilityStat]]:
+    """
+    返回：
+    {
+        "recommended_tasks": List[Task],
+        "l2_stats": List[L2AbilityStat]
+    }
+    """
+
     task_list = task_repo["task_list"]
 
     brain_distribution = profile.get("brain_distribution")
@@ -909,15 +960,18 @@ def build_L2_brain_ability_treemap(
         k=k,
     )
 
-    # 3️⃣ 统计 L2 分布
+    # 3️⃣ 统计 L2 分布（dict）
     l2_distribution = build_l2_distribution_from_tasks(
         recommended_tasks
     )
 
-    return {
-        "recommended_tasks": recommended_tasks,
-        "l2_distribution": l2_distribution
-    }
+    # ✅ 4️⃣ 直接转成 Pydantic 对象
+    l2_stats: List[L2AbilityStat] = [
+        L2AbilityStat(**item)
+        for item in l2_distribution
+    ]
+
+    return recommended_tasks, l2_stats
 
 
 
