@@ -34,7 +34,13 @@ class Task(BaseModel):
         title="脑能力坐标 (L1, L2)"
     )
 
-    # ✅ 新增：二级脑能力索引
+    # ✅ 一级脑能力索引
+    l1_index: Optional[int] = Field(
+        default=None,
+        title="一级脑能力索引"
+    )
+
+    # ✅ 二级脑能力索引
     l2_index: Optional[int] = Field(
         default=None,
         title="二级脑能力索引"
@@ -53,6 +59,7 @@ class Task(BaseModel):
 
         if not raw:
             self.brain_coord = []
+            self.l1_index = None
             self.l2_index = None
             return self
 
@@ -61,6 +68,7 @@ class Task(BaseModel):
 
         if "_" not in first_item:
             self.brain_coord = []
+            self.l1_index = None
             self.l2_index = None
             return self
 
@@ -68,6 +76,7 @@ class Task(BaseModel):
 
         if l1_cn not in L1_INDEX or l2_cn not in L2_INDEX:
             self.brain_coord = []
+            self.l1_index = None
             self.l2_index = None
             return self
 
@@ -76,6 +85,7 @@ class Task(BaseModel):
 
         # ✅ 写入
         self.brain_coord = [(l1_idx, l2_idx)]
+        self.l1_index = l1_idx
         self.l2_index = l2_idx
 
         return self

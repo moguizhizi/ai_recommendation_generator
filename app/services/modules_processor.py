@@ -9,10 +9,8 @@ from llm.base import BaseLLM
 from app.prompts.plan_prompt import GoalSummaryPrompt
 
 
-def get_missed_tasks_grouped_by_paradigm(
-    level1_key: str,
-    weekly_missed_task_infos: List[Task],
-    level2_keys: List[str] | None = None,
+def get_recommended_tasks_grouped_by_paradigm(
+    l1_recommended_tasks: List[Task],
 ) -> Dict[str, List[Task]]:
     """
     按范式分组漏训任务
@@ -22,8 +20,8 @@ def get_missed_tasks_grouped_by_paradigm(
 
     filtered_tasks: List[Task] = []
 
-    for task in weekly_missed_task_infos:
-        if task.cognitive_domain != level1_key:
+    for task in l1_recommended_tasks:
+        if not task.paradigm:
             continue
 
         filtered_tasks.append(task)
