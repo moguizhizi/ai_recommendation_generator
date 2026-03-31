@@ -13,6 +13,7 @@ llm:
 
 score_prediction:
   type: lightgbm   # 预测模型类型：lightgbm / xgboost / mlp / least_square
+  min_history_len: 3
 
   lightgbm:
     checkpoints:
