@@ -1,7 +1,11 @@
 # app/schemas/chat.py
-from pydantic import BaseModel, Field
 from typing import List, Optional
 from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
+
+from app.core.errors.error_codes import ErrorCode
+from app.core.errors.exceptions import BizError
 
 
 class DimensionScorePrediction(BaseModel):
@@ -38,15 +42,22 @@ class ScorePrediction(BaseModel):
 
 
 class AIRecPlanRequest(BaseModel):
-    user_id: str = Field(
-        ...,
+    user_id: Optional[str] = Field(
+        None,
         title="用户ID",
         description="平台内唯一用户标识",
-        example="1845646199363297282",
     )
-    patient_code: str = Field(
-        ..., title="患者编码", description="患者唯一业务编码", example="ETYY241028700"
+    patient_code: Optional[str] = Field(
+        None,
+        title="患者编码",
+        description="患者唯一业务编码",
     )
+
+    @model_validator(mode="after")
+    def check_at_least_one(cls, values):
+        if not values.user_id and not values.patient_code:
+            raise BizError(ErrorCode.MISSING_USER_IDENTIFIER)
+        return values
 
 
 class TrainingItem(BaseModel):
