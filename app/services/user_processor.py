@@ -58,11 +58,10 @@ def build_user_matrix(last_84_days_task, task_map: Dict[str, Task]) -> np.ndarra
 
 def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) -> Dict:
     """
-    从 patient 数据中读取用户画像
+    从 patient 数据中读取用户画像（优化版）
     """
 
     patient_path = config["task"]["user_brain_score"]
-
     df = pd.read_parquet(patient_path)
 
     with open(
@@ -72,43 +71,68 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
 
     cols = ColumnAccessor(COLUMN_MAPPING, UserTrainingColumnName)
 
-    # 定位用户
-    user_row = None
+    # ======================
+    # Step 1: 分别查找
+    # ======================
+    user_row_by_uid = None
+    user_row_by_pid = None
 
     if user_id:
-        user_df = df[df[cols.user_id] == user_id]
-        if not user_df.empty:
-            user_row = user_df.iloc[0]
+        tmp = df[df[cols.user_id] == user_id]
+        if not tmp.empty:
+            user_row_by_uid = tmp.iloc[0]
 
-    if user_row is None and patient_code:
-        user_df = df[df[cols.patient_code] == patient_code]
-        if not user_df.empty:
-            user_row = user_df.iloc[0]
+    if patient_code:
+        tmp = df[df[cols.patient_code] == patient_code]
+        if not tmp.empty:
+            user_row_by_pid = tmp.iloc[0]
 
-    if user_row is None:
-        raise BizError(
-            ErrorCode.USER_NOT_FOUND,
-            user_id=user_id,
-            patient_code=patient_code,
-        )
+    # ======================
+    # Step 2: 双参数一致性校验（核心简化）
+    # ======================
+    if user_id and patient_code:
+        if user_row_by_uid is None or user_row_by_pid is None:
+            raise BizError(
+                ErrorCode.USER_ID_PATIENT_CODE_MISMATCH,
+                user_id=user_id,
+                patient_code=patient_code,
+            )
 
+        # 是否同一人
+        if safe_get(user_row_by_uid, cols.patient_code) != safe_get(user_row_by_pid, cols.patient_code):
+            raise BizError(
+                ErrorCode.USER_ID_PATIENT_CODE_MISMATCH,
+                user_id=user_id,
+                patient_code=patient_code,
+            )
+
+        user_row = user_row_by_uid
+
+    # ======================
+    # Step 3: 单参数 fallback
+    # ======================
+    else:
+        user_row = user_row_by_uid or user_row_by_pid
+
+        if user_row is None:
+            raise BizError(
+                ErrorCode.USER_NOT_FOUND,
+                user_id=user_id,
+                patient_code=patient_code,
+            )
+
+    # ======================
+    # Step 4: 构建画像（不变）
+    # ======================
     latest_level1_scores = {
         Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.latest_memory),
-        Level1BrainDomain.EXECUTIVE.value: safe_get(
-            user_row, cols.latest_executive
-        ),
-        Level1BrainDomain.ATTENTION.value: safe_get(
-            user_row, cols.latest_attention
-        ),
-        Level1BrainDomain.PERCEPTION.value: safe_get(
-            user_row, cols.latest_perception
-        ),
+        Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.latest_executive),
+        Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.latest_attention),
+        Level1BrainDomain.PERCEPTION.value: safe_get(user_row, cols.latest_perception),
     }
 
     invalid_level1_scores = {
-        domain: score
-        for domain, score in latest_level1_scores.items()
-        if not isinstance(score, Number)
+        d: v for d, v in latest_level1_scores.items() if not isinstance(v, Number)
     }
     if invalid_level1_scores:
         raise BizError(
@@ -119,14 +143,13 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         )
 
     last_84_days_task = safe_get(user_row, cols.last_84_days_task)
-    if last_84_days_task is None or len(last_84_days_task) == 0:
+    if not last_84_days_task:
         raise BizError(
             ErrorCode.NEW_USER_PLAN_NOT_AVAILABLE,
             user_id=user_id,
             patient_code=patient_code,
         )
 
-    # 构建画像
     profile = {
         "user_id": safe_get(user_row, cols.user_id),
         "patient_code": safe_get(user_row, cols.patient_code),
