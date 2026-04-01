@@ -6,6 +6,7 @@ from enum import Enum
 class ErrorCode(str, Enum):
 
     # 用户相关
+    MISSING_USER_IDENTIFIER = "MISSING_USER_IDENTIFIER"
     USER_NOT_FOUND = "USER_NOT_FOUND"
 
     # 用户画像相关 / Task 相关
