@@ -1,10 +1,8 @@
 # app/services/chat_service.py
 from typing import Any, Dict
 
-from fastapi import HTTPException
-
 from app.core.constants import UserType
-from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse, L2AbilityStat
+from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse
 from app.services.plan_rule_engine import (
     build_L2_brain_ability_treemap,
     build_advantage_user_modules,
@@ -19,6 +17,7 @@ from app.services.plan_rule_engine import (
     enrich_user_profile_with_tasks,
     get_fixed_templates,
     render_plan_text,
+    validate_recommendation_performance,
 )
 from app.services.task_processor import (
     build_level2_to_level1_map,
@@ -60,6 +59,14 @@ def generate_ai_plan(
     level2_to_level1 = build_level2_to_level1_map(task_repo)
     
     recommended_tasks, l2_stats = build_L2_brain_ability_treemap(profile, task_repo)
+
+    validation_config = config.get("recommendation_validation", {})
+    if validation_config.get("enabled", False):
+        validate_recommendation_performance(
+            profile=profile,
+            recommended_tasks=recommended_tasks,
+            top_n_targets=validation_config.get("top_n_targets", 5),
+        )
 
     l1_task_map = build_l1_task_map(recommended_tasks)
 

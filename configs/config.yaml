@@ -30,6 +30,10 @@ runtime:
   timeout: 60
   max_retries: 3
 
+recommendation_validation:
+  enabled: false
+  top_n_targets: 5
+
 # debug:
 #   dataset_row_limits:
 #     alg_cogtrain_brainscore_task_child: 5000
@@ -173,6 +177,7 @@ columns:
     - 最后一天训练任务
     - 最近七天未训练任务
     - 最近84天训练任务
+    - 倒数第一个84天训练任务
 
 raw_to_processed:
 

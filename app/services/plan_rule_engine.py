@@ -1,21 +1,28 @@
 # app/services/plan_rule_engine.py
 import json
 import random
-import pandas as pd
-import numpy as np
+from collections import defaultdict
 from numbers import Number
 from pathlib import Path
-from app.core.cognitive_l1.constants import L1_INDEX, L2_INDEX_REVERSE, Level2BrainDomain
+from typing import Any, Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
+
+from app.core.cognitive_l1.constants import (
+    L1_INDEX,
+    L1_INDEX_REVERSE,
+    L2_INDEX_REVERSE,
+    Level2BrainDomain,
+)
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
     Level1BrainDomain,
-    Level1Score,
     ModuleName,
-    UserType,
+    Level1Score,
     ScoreThreshold,
+    UserType,
 )
-from typing import Dict, List, Tuple, Any
-from collections import defaultdict
 from app.core.errors.error_codes import ErrorCode
 from app.core.errors.exceptions import BizError
 from app.schemas.chat import (
@@ -36,9 +43,8 @@ from app.services.modules_processor import (
 )
 from llm.base import BaseLLM
 
-from utils.logger import get_logger
 from models.model_factory import ModelManager
-from collections import defaultdict
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -1152,6 +1158,92 @@ def build_L2_brain_ability_treemap(
     ]
 
     return recommended_tasks, l2_stats
+
+
+def validate_recommendation_performance(
+    profile: Dict[str, Any],
+    recommended_tasks: List[Task],
+    top_n_targets: int = 5,
+) -> Dict[str, Any]:
+    """
+    验证推荐结果对目标矩阵高权重坐标的命中情况。
+
+    命中率定义：
+    - hit_rate: 推荐结果中，brain_coord 命中目标矩阵 Top N 坐标的占比
+    - unique_hit_rate: 去重后 task_id 维度的命中占比
+    """
+
+    brain_distribution = profile.get("brain_distribution")
+    if not brain_distribution:
+        return {}
+
+    target_matrix = build_simple_target_matrix(profile, brain_distribution)
+
+    ranked_targets: List[Tuple[Tuple[int, int], float]] = sorted(
+        [
+            ((l1_idx, l2_idx), float(target_matrix[l1_idx][l2_idx]))
+            for l1_idx in range(target_matrix.shape[0])
+            for l2_idx in range(target_matrix.shape[1])
+        ],
+        key=lambda item: item[1],
+        reverse=True,
+    )
+
+    top_n_targets = max(int(top_n_targets), 1)
+    target_coords = [coord for coord, _ in ranked_targets[:top_n_targets]]
+    target_coord_set = set(target_coords)
+
+    total_count = len(recommended_tasks)
+    if total_count == 0:
+        metrics = {
+            "top_n_targets": top_n_targets,
+            "target_coords": [],
+            "total_count": 0,
+            "hit_count": 0,
+            "hit_rate": 0.0,
+            "unique_task_count": 0,
+            "unique_hit_count": 0,
+            "unique_hit_rate": 0.0,
+        }
+        logger.info("[RECOMMENDATION_VALIDATION] %s", metrics)
+        return metrics
+
+    def is_hit(task: Task) -> bool:
+        if not task.brain_coord:
+            return False
+        return any(tuple(coord) in target_coord_set for coord in task.brain_coord)
+
+    hit_count = sum(1 for task in recommended_tasks if is_hit(task))
+
+    unique_tasks: Dict[str, Task] = {}
+    for task in recommended_tasks:
+        unique_tasks[task.task_id] = task
+
+    unique_hit_count = sum(1 for task in unique_tasks.values() if is_hit(task))
+
+    metrics = {
+        "top_n_targets": top_n_targets,
+        "target_coords": [
+            {
+                "l1": L1_INDEX_REVERSE.get(l1_idx, str(l1_idx)),
+                "l2": L2_INDEX_REVERSE.get(l2_idx, str(l2_idx)),
+                "weight": round(weight, 6),
+            }
+            for (l1_idx, l2_idx), weight in ranked_targets[:top_n_targets]
+        ],
+        "total_count": total_count,
+        "hit_count": hit_count,
+        "hit_rate": round(hit_count / total_count, 4),
+        "unique_task_count": len(unique_tasks),
+        "unique_hit_count": unique_hit_count,
+        "unique_hit_rate": round(
+            unique_hit_count / len(unique_tasks), 4
+        ) if unique_tasks else 0.0,
+    }
+
+    logger.info("[RECOMMENDATION_VALIDATION] %s", metrics)
+
+    return metrics
 
 
 
