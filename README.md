@@ -54,6 +54,7 @@ project_root/
 │   ├── dataframe_utils.py         # DataFrame 相关工具（pandas 操作封装，如清洗/转换）
 │   ├── io_utils.py                # 通用 IO 工具（文件读写封装）
 │   ├── json_utils.py              # JSON 读写与序列化工具
+│   ├── metrics_utils.py           # 推荐效果指标工具（L2 分布向量化 / L1 距离 / 相似度计算）
 │   ├── parquet_utils.py           # Parquet 文件读写与转换工具
 │   ├── path_utils.py              # 路径处理工具（Path 构建 / 目录创建等）
 │   ├── seed.py                    # 随机种子初始化工具（numpy / random / torch）
