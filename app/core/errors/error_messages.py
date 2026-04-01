@@ -5,6 +5,7 @@ from .error_codes import ErrorCode
 
 ERROR_MESSAGES = {
     ErrorCode.MISSING_USER_IDENTIFIER: "用户ID和患者编码至少需要提供一个",
+    ErrorCode.USER_ID_PATIENT_CODE_MISMATCH: "用户ID和患者编码不匹配",
     ErrorCode.USER_NOT_FOUND: "未找到对应用户",
     ErrorCode.MISSING_LAST_TASK: "用户近期未完成任何训练，计划生成失败",
     ErrorCode.TASK_NOT_FOUND_IN_REPO: "用户近期有任务异常，计划生成失败",
