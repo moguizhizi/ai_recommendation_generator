@@ -122,6 +122,10 @@ class UserTrainingColumnName(str, Enum):
     LAST_DAY_TASK = "最后一天训练任务"
     LAST_7_DAYS_NO_TASK = "最近七天未训练任务"
     LAST_84_DAYS_TASK = "最近84天训练任务"
+    LAST_84D_LATEST_PERCEPTION = "倒数第一个84天_最新_感知觉"
+    LAST_84D_LATEST_ATTENTION = "倒数第一个84天_最新_注意力"
+    LAST_84D_LATEST_MEMORY = "倒数第一个84天_最新_记忆力"
+    LAST_84D_LATEST_EXECUTIVE = "倒数第一个84天_最新_执行控制"
     LAST_84_DAYS_FIRST_TASK = "倒数第一个84天训练任务"
 
 

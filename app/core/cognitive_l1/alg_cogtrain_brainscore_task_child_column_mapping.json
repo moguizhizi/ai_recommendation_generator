@@ -75,5 +75,9 @@
     "最后一天训练任务": "last_day_task",
     "最近七天未训练任务": "last_7_days_no_task",
     "最近84天训练任务": "last_84_days_task",
+    "倒数第一个84天_最新_感知觉": "last_84d_latest_perception",
+    "倒数第一个84天_最新_注意力": "last_84d_latest_attention",
+    "倒数第一个84天_最新_记忆力": "last_84d_latest_memory",
+    "倒数第一个84天_最新_执行控制": "last_84d_latest_executive_function",
     "倒数第一个84天训练任务": "last_84_days_first_task"
 }
