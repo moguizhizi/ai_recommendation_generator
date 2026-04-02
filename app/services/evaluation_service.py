@@ -22,44 +22,13 @@ class EvaluationService:
     def evaluate_all_users(self) -> dict:
         """统计 train_eval_dataset 中两段任务列表的数量差异比。"""
 
-        dataset_cfg = self.config["train_eval_dataset"][
-            CognitiveL1DatasetName.USER_BRAIN_SCORE.value
-        ]
-        dataset_path = Path(dataset_cfg["dataset"])
-        analyzed_dataset_path = Path(
-            dataset_cfg.get("analyzed_dataset", dataset_cfg["dataset"])
-        )
-        metrics_cfg = dataset_cfg["analysis_metrics"]["task_count_comparison"]
-
-        if not dataset_path.exists():
-            raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
-
-        with open(
-            self.config["column_mapping"][CognitiveL1DatasetName.USER_BRAIN_SCORE.value]
-        ) as f:
-            column_mapping = json.load(f)
-
-        df = pd.read_parquet(dataset_path)
-        analysis_result = self._analyze_task_count_comparison(
-            df=df,
-            column_mapping=column_mapping,
-            metrics_cfg=metrics_cfg,
-        )
-        df = analysis_result["df"]
-
-        analyzed_dataset_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(analyzed_dataset_path, index=False)
-        self._log_analysis_result(
-            analyzed_dataset_path=analyzed_dataset_path,
-            rows=len(df),
-            analysis_result=analysis_result,
+        filtered_df = self._prepare_filtered_analysis_df(
+            min_ratio=0.8,
+            max_ratio=1.2,
         )
 
-        return self._build_analysis_response(
-            analyzed_dataset_path=analyzed_dataset_path,
-            rows=len(df),
-            analysis_result=analysis_result,
-        )
+        
+        return filtered_df
 
     def evaluate_single_user(self, user_id: str) -> dict:
         """单用户评估"""
@@ -118,6 +87,51 @@ class EvaluationService:
             ),
         }
 
+    def _prepare_filtered_analysis_df(
+        self,
+        min_ratio: float,
+        max_ratio: float,
+    ) -> pd.DataFrame:
+        dataset_cfg = self.config["train_eval_dataset"][
+            CognitiveL1DatasetName.USER_BRAIN_SCORE.value
+        ]
+        dataset_path = Path(dataset_cfg["dataset"])
+        analyzed_dataset_path = Path(
+            dataset_cfg.get("analyzed_dataset", dataset_cfg["dataset"])
+        )
+        metrics_cfg = dataset_cfg["analysis_metrics"]["task_count_comparison"]
+
+        if not dataset_path.exists():
+            raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
+
+        with open(
+            self.config["column_mapping"][CognitiveL1DatasetName.USER_BRAIN_SCORE.value]
+        ) as f:
+            column_mapping = json.load(f)
+
+        df = pd.read_parquet(dataset_path)
+        analysis_result = self._analyze_task_count_comparison(
+            df=df,
+            column_mapping=column_mapping,
+            metrics_cfg=metrics_cfg,
+        )
+        analyzed_df = analysis_result["df"]
+
+        analyzed_dataset_path.parent.mkdir(parents=True, exist_ok=True)
+        analyzed_df.to_parquet(analyzed_dataset_path, index=False)
+        self._log_analysis_result(
+            analyzed_dataset_path=analyzed_dataset_path,
+            rows=len(analyzed_df),
+            analysis_result=analysis_result,
+        )
+
+        return self._filter_ratio_range_df(
+            df=analyzed_df,
+            ratio_column=analysis_result["output_columns"]["ratio"],
+            min_ratio=min_ratio,
+            max_ratio=max_ratio,
+        )
+
     @staticmethod
     def _log_analysis_result(
         analyzed_dataset_path: Path,
@@ -143,21 +157,13 @@ class EvaluationService:
         )
 
     @staticmethod
-    def _build_analysis_response(
-        analyzed_dataset_path: Path,
-        rows: int,
-        analysis_result: dict,
-    ) -> dict:
-        output_columns = analysis_result["output_columns"]
-        return {
-            "dataset_path": str(analyzed_dataset_path),
-            "rows": int(rows),
-            "ratio_column": output_columns["ratio"],
-            "count_diff_column": output_columns["diff_count"],
-            "count_diff_stats": analysis_result["count_diff_stats"],
-            "ratio_stats": analysis_result["ratio_stats"],
-            "ratio_range_distribution": analysis_result["ratio_range_distribution"],
-        }
+    def _filter_ratio_range_df(
+        df: pd.DataFrame,
+        ratio_column: str,
+        min_ratio: float,
+        max_ratio: float,
+    ) -> pd.DataFrame:
+        return df[(df[ratio_column] >= min_ratio) & (df[ratio_column] <= max_ratio)].copy()
 
     @staticmethod
     def _count_tasks(val) -> int:
