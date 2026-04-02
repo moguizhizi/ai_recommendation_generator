@@ -5,6 +5,7 @@ from collections import defaultdict
 from numbers import Number
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+from utils.metrics_utils import compute_l1_from_distributions, l1_similarity
 
 import numpy as np
 import pandas as pd
@@ -226,49 +227,41 @@ def enrich_user_profile_with_tasks(profile: dict, task_repo: dict) -> dict:
 
     return enriched_profile
 
-def enrich_user_profile_with_brain_distribution(
-    profile: Dict[str, Any],
+def build_brain_distribution(
+    tasks: List[str],
     task_repo: Dict[str, Any],
-    build_matrix: bool = False,  # 是否额外构建矩阵
+    build_matrix: bool = False,
 ) -> Dict[str, Any]:
     """
-    基于 last_84_days_task 构建用户脑能力分布（L1 * L2）
-
-    Args:
-        profile: 用户画像
-        task_repo: 任务仓库（包含 task_index）
-        build_matrix: 是否构建 4x19 矩阵（默认 False）
+    从任务列表构建脑能力分布（L1 * L2）
 
     Returns:
-        enriched_profile
+        {
+            "brain_distribution": [...],
+            "level1_distribution": {...},
+            "brain_matrix": optional
+        }
     """
 
     task_index: Dict[str, Any] = task_repo.get("task_index", {})
-    enriched_profile = dict(profile)  # 浅拷贝
-
-    last_84_days_task = profile.get("last_84_days_task")
 
     # --- 1️⃣ 参数校验 ---
-    if not isinstance(last_84_days_task, list) or not last_84_days_task:
-        raise BizError(
-            ErrorCode.NEW_USER_PLAN_NOT_AVAILABLE,
-            user_id=profile.get("user_id", ""),
-            patient_code=profile.get("patient_code", ""),
-        )
+    if not isinstance(tasks, list) or not tasks:
+        return {
+            "brain_distribution": [],
+            "level1_distribution": {},
+            "brain_matrix": None,
+        }
 
     if not task_index:
-        raise BizError(
-            ErrorCode.TASK_REPO_EMPTY,
-            user_id=profile.get("user_id", ""),
-            patient_code=profile.get("patient_code", ""),
-        )
+        raise ValueError("task_index 不能为空")
 
-    # --- 2️⃣ 统计 (l1, l2) ---
+    # --- 2️⃣ 统计 ---
     counter: Dict[Tuple[int, int], int] = defaultdict(int)
     total = 0
     valid_task_cnt = 0
 
-    for item in last_84_days_task:
+    for item in tasks:
 
         if not isinstance(item, str) or "_" not in item:
             logger.warning(f"[BRAIN_DIST] invalid task format: {item}")
@@ -297,15 +290,16 @@ def enrich_user_profile_with_brain_distribution(
     # --- 3️⃣ 构建分布 ---
     brain_distribution: List[Dict[str, Any]] = []
 
-    for (l1, l2), count in counter.items():
-        brain_distribution.append(
-            {
-                "l1": int(l1),
-                "l2": int(l2),
-                "count": int(count),
-                "ratio": round(count / total, 3),  # 保留3位小数
-            }
-        )
+    if total > 0:
+        for (l1, l2), count in counter.items():
+            brain_distribution.append(
+                {
+                    "l1": int(l1),
+                    "l2": int(l2),
+                    "count": int(count),
+                    "ratio": round(count / total, 3),
+                }
+            )
 
     # --- 4️⃣ Level1 汇总 ---
     level1_counter: Dict[int, int] = defaultdict(int)
@@ -317,25 +311,42 @@ def enrich_user_profile_with_brain_distribution(
         int(k): int(v) for k, v in level1_counter.items()
     }
 
-    # --- 5️⃣ （可选）构建矩阵 ---
+    # --- 5️⃣ 可选矩阵 ---
     brain_matrix = None
 
     if build_matrix:
-        brain_matrix = [[0 for _ in range(19)] for _ in range(4)]
+        brain_matrix = [
+            [0 for _ in range(len(Level2BrainDomain))]
+            for _ in range(len(Level1BrainDomain))
+        ]
 
         for (l1, l2), count in counter.items():
             brain_matrix[l1][l2] = int(count)
 
-    # --- 6️⃣ 写入画像 ---
-    enriched_profile["brain_distribution"] = brain_distribution
-    enriched_profile["level1_distribution"] = level1_distribution
+    return {
+        "brain_distribution": brain_distribution,
+        "level1_distribution": level1_distribution,
+        "brain_matrix": brain_matrix,
+    }
 
-    if build_matrix:
-        enriched_profile["brain_matrix"] = brain_matrix
+def enrich_user_profile_with_brain_distribution(
+    profile: Dict[str, Any],
+    tasks: List[str],
+    task_repo: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    将脑能力分布写入 profile
+    """
 
-    logger.debug(
-        f"[BRAIN_DIST] build complete for user_id={profile.get('user_id')}"
+    dist_result = build_brain_distribution(
+        tasks=tasks,
+        task_repo=task_repo,
     )
+
+    enriched_profile = dict(profile)
+
+    enriched_profile["brain_distribution"] = dist_result["brain_distribution"]
+    enriched_profile["level1_distribution"] = dist_result["level1_distribution"]
 
     return enriched_profile
 
@@ -1161,9 +1172,8 @@ def build_L2_brain_ability_treemap(
 
 
 def validate_recommendation_performance(
-    profile: Dict[str, Any],
+    history_tasks: List[Task],
     recommended_tasks: List[Task],
-    top_n_targets: int = 5,
 ) -> Dict[str, Any]:
     """
     验证推荐结果对目标矩阵高权重坐标的命中情况。
@@ -1173,77 +1183,17 @@ def validate_recommendation_performance(
     - unique_hit_rate: 去重后 task_id 维度的命中占比
     """
 
-    brain_distribution = profile.get("brain_distribution")
-    if not brain_distribution:
-        return {}
+    # 构建分布
+    history_dist = build_l2_distribution_from_tasks(history_tasks)
+    recommend_dist = build_l2_distribution_from_tasks(recommended_tasks)
 
-    target_matrix = build_simple_target_matrix(profile, brain_distribution)
+    # 计算 L1
+    l1 = compute_l1_from_distributions(history_dist, recommend_dist)
 
-    ranked_targets: List[Tuple[Tuple[int, int], float]] = sorted(
-        [
-            ((l1_idx, l2_idx), float(target_matrix[l1_idx][l2_idx]))
-            for l1_idx in range(target_matrix.shape[0])
-            for l2_idx in range(target_matrix.shape[1])
-        ],
-        key=lambda item: item[1],
-        reverse=True,
-    )
+    # 3️⃣ 转换成相似度（更直观）
+    sim = l1_similarity(l1)
 
-    top_n_targets = max(int(top_n_targets), 1)
-    target_coords = [coord for coord, _ in ranked_targets[:top_n_targets]]
-    target_coord_set = set(target_coords)
-
-    total_count = len(recommended_tasks)
-    if total_count == 0:
-        metrics = {
-            "top_n_targets": top_n_targets,
-            "target_coords": [],
-            "total_count": 0,
-            "hit_count": 0,
-            "hit_rate": 0.0,
-            "unique_task_count": 0,
-            "unique_hit_count": 0,
-            "unique_hit_rate": 0.0,
-        }
-        logger.info("[RECOMMENDATION_VALIDATION] %s", metrics)
-        return metrics
-
-    def is_hit(task: Task) -> bool:
-        if not task.brain_coord:
-            return False
-        return any(tuple(coord) in target_coord_set for coord in task.brain_coord)
-
-    hit_count = sum(1 for task in recommended_tasks if is_hit(task))
-
-    unique_tasks: Dict[str, Task] = {}
-    for task in recommended_tasks:
-        unique_tasks[task.task_id] = task
-
-    unique_hit_count = sum(1 for task in unique_tasks.values() if is_hit(task))
-
-    metrics = {
-        "top_n_targets": top_n_targets,
-        "target_coords": [
-            {
-                "l1": L1_INDEX_REVERSE.get(l1_idx, str(l1_idx)),
-                "l2": L2_INDEX_REVERSE.get(l2_idx, str(l2_idx)),
-                "weight": round(weight, 6),
-            }
-            for (l1_idx, l2_idx), weight in ranked_targets[:top_n_targets]
-        ],
-        "total_count": total_count,
-        "hit_count": hit_count,
-        "hit_rate": round(hit_count / total_count, 4),
-        "unique_task_count": len(unique_tasks),
-        "unique_hit_count": unique_hit_count,
-        "unique_hit_rate": round(
-            unique_hit_count / len(unique_tasks), 4
-        ) if unique_tasks else 0.0,
-    }
-
-    logger.info("[RECOMMENDATION_VALIDATION] %s", metrics)
-
-    return metrics
+    
 
 
 

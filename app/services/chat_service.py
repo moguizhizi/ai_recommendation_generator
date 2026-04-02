@@ -51,7 +51,7 @@ def generate_ai_plan(
     profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
     
     profile = enrich_user_profile_with_tasks(profile, task_repo)
-    profile = enrich_user_profile_with_brain_distribution(profile, task_repo)
+    profile = enrich_user_profile_with_brain_distribution(profile, profile.get("last_84_days_task"),task_repo)
     profile = enrich_user_profile_with_domain_histories(profile, config=config)
     profile = enrich_profile_with_user_type(profile)
 
@@ -62,11 +62,19 @@ def generate_ai_plan(
 
     validation_config = config.get("recommendation_validation", {})
     if validation_config.get("enabled", False):
+        last_84_days_task_brain_distribution = profile.pop("brain_distribution", None)
+        last_84_days_task_level1_distribution = profile.pop("level1_distribution", None)
+        
+        profile = enrich_user_profile_with_brain_distribution(profile, profile.get("last_84_days_task"),task_repo)
+
+
         validate_recommendation_performance(
             profile=profile,
-            recommended_tasks=recommended_tasks,
-            top_n_targets=validation_config.get("top_n_targets", 5),
+            recommended_tasks=recommended_tasks
         )
+
+        profile["brain_distribution"] = last_84_days_task_brain_distribution
+        profile["level1_distribution"] = last_84_days_task_level1_distribution
 
     l1_task_map = build_l1_task_map(recommended_tasks)
 

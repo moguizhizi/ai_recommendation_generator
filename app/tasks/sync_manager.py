@@ -1,5 +1,7 @@
-import asyncio
+# services/sync_tasks.py
 
+import asyncio
+from app.core import sync_state
 from app.tasks.data_sync_task import (
     build_train_eval_dataset_job,
     csv_to_parquet_job,
@@ -9,12 +11,6 @@ from app.tasks.data_sync_task import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-# services/sync_tasks.py
-
-import asyncio
-from app.core import sync_state
 
 
 def start_sync_tasks(config):
