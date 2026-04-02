@@ -1,6 +1,7 @@
 import asyncio
 
 from app.tasks.data_sync_task import (
+    build_train_eval_dataset_job,
     csv_to_parquet_job,
     raw_data_copy_job,
     task_repository_job,
@@ -45,6 +46,14 @@ def start_sync_tasks(config):
     # 3️⃣ repository
     asyncio.create_task(
         task_repository_job(
+            config=config,
+            interval_seconds=interval,
+        )
+    )
+
+    # train_eval_dataset
+    asyncio.create_task(
+        build_train_eval_dataset_job(
             config=config,
             interval_seconds=interval,
         )

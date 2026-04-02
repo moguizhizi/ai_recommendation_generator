@@ -4,14 +4,18 @@ from typing import Dict, List, Any
 from collections import defaultdict
 from pathlib import Path
 
-from app.core.cognitive_l1.constants import CognitiveL1DatasetName, TaskColumnName
+from app.core.cognitive_l1.constants import (
+    CognitiveL1DatasetName,
+    TaskColumnName,
+    UserTrainingColumnName,
+)
 from app.core.constants import Level1BrainDomain
 from app.schemas.common import Task
 from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
 import pandas as pd
 import json
-
+import numpy as np
 
 logger = get_logger(__name__)
 
@@ -192,3 +196,109 @@ def get_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     return repo
+
+
+def build_train_eval_dataset(config: Dict[str, Any]):
+    """
+    按条件筛选有效样本并保存 dataset 文件
+
+    流程：
+    1. 读取 source parquet
+    2. 按关键字段过滤有效数据
+    3. 保存 dataset parquet
+    """
+
+    dataset_cfg = config["train_eval_dataset"]["alg_cogtrain_brainscore_task_child"]
+
+    source_path = Path(dataset_cfg["source"])
+    dataset_path = Path(dataset_cfg["dataset"])
+
+    logger.info("[DATASET_BUILD] start source=%s", source_path)
+
+    # =========================
+    # 1️⃣ 读取数据
+    # =========================
+    if not source_path.exists():
+        raise FileNotFoundError(f"Source file not found: {source_path}")
+
+    df = pd.read_parquet(source_path)
+
+    with open(
+        config["column_mapping"][CognitiveL1DatasetName.USER_BRAIN_SCORE.value]
+    ) as f:
+        COLUMN_MAPPING = json.load(f)
+
+    cols = ColumnAccessor(COLUMN_MAPPING, UserTrainingColumnName)
+
+    logger.info("[DATASET_BUILD] loaded rows=%s", len(df))
+
+    # =========================
+    # 2️⃣ 数据清洗 / 过滤
+    # =========================
+    df = _filter_valid_rows(df, cols)
+
+    logger.info("[DATASET_BUILD] after_filter rows=%s", len(df))
+
+    # =========================
+    # 3️⃣ 保存 dataset
+    # =========================
+    dataset_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df.to_parquet(dataset_path, index=False)
+
+    logger.info("[DATASET_SAVED] path=%s rows=%s", dataset_path, len(df))
+
+
+def _is_valid_scalar(series: pd.Series) -> pd.Series:
+    return series.notna()
+
+
+def _is_valid_task_list(series: pd.Series) -> pd.Series:
+    def _has_value(val) -> bool:
+
+        # 1️⃣ None
+        if val is None:
+            return False
+
+        # 2️⃣ list / tuple / ndarray
+        if isinstance(val, (list, tuple, np.ndarray)):
+            return any(
+                item is not None and str(item).strip()
+                for item in val
+            )
+
+        # 3️⃣ 标量（再用 isna）
+        if pd.isna(val):
+            return False
+
+        # 4️⃣ 其他（字符串等）
+        return bool(str(val).strip())
+
+    return series.apply(_has_value)
+
+
+def _filter_valid_rows(df: pd.DataFrame, cols: ColumnAccessor) -> pd.DataFrame:
+    required_numeric_fields = [
+        cols.latest_perception,
+        cols.latest_attention,
+        cols.latest_memory,
+        cols.latest_executive,
+        cols.last_84d_latest_perception,
+        cols.last_84d_latest_attention,
+        cols.last_84d_latest_memory,
+        cols.last_84d_latest_executive,
+    ]
+    required_task_fields = [
+        cols.last_84_days_task,
+        cols.last_84_days_first_task,
+    ]
+
+    mask = pd.Series(True, index=df.index)
+
+    for field in required_numeric_fields:
+        mask &= _is_valid_scalar(df[field])
+
+    for field in required_task_fields:
+        mask &= _is_valid_task_list(df[field])
+
+    return df.loc[mask].copy()
