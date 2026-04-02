@@ -131,6 +131,13 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         Level1BrainDomain.PERCEPTION.value: safe_get(user_row, cols.latest_perception),
     }
 
+    last_84d_latest_level1_scores = {
+        Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.last_84d_latest_memory),
+        Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.last_84d_latest_executive),
+        Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.last_84d_latest_attention),
+        Level1BrainDomain.PERCEPTION.value: safe_get(user_row, cols.last_84d_latest_perception),
+    }
+
     invalid_level1_scores = {
         d: v for d, v in latest_level1_scores.items() if not isinstance(v, Number)
     }
@@ -155,6 +162,7 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         "patient_code": safe_get(user_row, cols.patient_code),
         "disease_tag": safe_get(user_row, cols.disease),
         "latest_level1_scores": latest_level1_scores,
+        "last_84d_latest_level1_scores": last_84d_latest_level1_scores,
         "last_day_task": safe_get(user_row, cols.last_day_task),
         "last_84_days_task": last_84_days_task,
         "last_84_days_first_task": safe_get(user_row, cols.last_84_days_first_task),
