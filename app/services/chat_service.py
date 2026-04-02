@@ -60,22 +60,6 @@ def generate_ai_plan(
     
     recommended_tasks, l2_stats = build_L2_brain_ability_treemap(profile, task_repo)
 
-    validation_config = config.get("recommendation_validation", {})
-    if validation_config.get("enabled", False):
-        last_84_days_task_brain_distribution = profile.pop("brain_distribution", None)
-        last_84_days_task_level1_distribution = profile.pop("level1_distribution", None)
-        
-        profile = enrich_user_profile_with_brain_distribution(profile, profile.get("last_84_days_task"),task_repo)
-
-
-        validate_recommendation_performance(
-            profile=profile,
-            recommended_tasks=recommended_tasks
-        )
-
-        profile["brain_distribution"] = last_84_days_task_brain_distribution
-        profile["level1_distribution"] = last_84_days_task_level1_distribution
-
     l1_task_map = build_l1_task_map(recommended_tasks)
 
     user_type: UserType = profile["user_type"]
