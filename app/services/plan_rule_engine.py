@@ -1012,7 +1012,7 @@ def build_l1_task_map(recommended_tasks: List[Task]) -> Dict[int, List[Task]]:
 # 1️⃣ 构建目标分布矩阵
 # ===============================
 def build_simple_target_matrix(
-    profile: Dict[str, Any],
+    l1_scores: Dict[str, Any],
     brain_distribution: List[Dict[str, Any]],
 ) -> np.ndarray:
     """
@@ -1022,7 +1022,6 @@ def build_simple_target_matrix(
     matrix = np.zeros((len(Level1BrainDomain), len(Level2BrainDomain)))  # 4x19 矩阵
 
     # --- 1. L1弱项权重 ---
-    l1_scores = profile["latest_level1_scores"]  
     max_score = max(l1_scores.values())
 
     l1_weight = {
@@ -1128,6 +1127,7 @@ def build_l2_distribution_from_tasks(
 
 def build_L2_brain_ability_treemap(
     profile: Dict[str, Any],
+    l1_scores: Dict[str, Any],
     task_repo: Dict[str, Any],
     k: int = 420,
 ) -> Tuple[List[Task], List[L2AbilityStat]]:
@@ -1144,10 +1144,13 @@ def build_L2_brain_ability_treemap(
     brain_distribution = profile.get("brain_distribution")
     if not brain_distribution:
         raise ValueError("brain_distribution 不能为空")
+    if not l1_scores:
+        raise ValueError("latest_level1_scores 不能为空")
 
     # 1️⃣ 目标矩阵
     target_matrix = build_simple_target_matrix(
-        profile, brain_distribution
+        l1_scores,
+        brain_distribution,
     )
 
     # 2️⃣ 推荐任务

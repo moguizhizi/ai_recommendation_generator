@@ -58,7 +58,11 @@ def generate_ai_plan(
     fixed_templates = get_fixed_templates(profile)
     level2_to_level1 = build_level2_to_level1_map(task_repo)
     
-    recommended_tasks, l2_stats = build_L2_brain_ability_treemap(profile, task_repo)
+    recommended_tasks, l2_stats = build_L2_brain_ability_treemap(
+        profile,
+        profile["latest_level1_scores"],
+        task_repo,
+    )
 
     l1_task_map = build_l1_task_map(recommended_tasks)
 
