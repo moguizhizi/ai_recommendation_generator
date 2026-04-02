@@ -118,6 +118,10 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
             cols.week11_attention,
             cols.week11_memory,
             cols.week11_executive,
+            cols.last_84d_latest_perception,
+            cols.last_84d_latest_attention,
+            cols.last_84d_latest_memory,
+            cols.last_84d_latest_executive,
             cols.episodic_memory,
             cols.interference_control,
             cols.response_inhibition,
@@ -143,6 +147,7 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
             cols.last_day_task,
             cols.last_84_days_task,
             cols.last_7_days_no_task,
+            cols.last_84_days_first_task,
         ]
 
         sep = ";"
