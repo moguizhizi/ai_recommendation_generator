@@ -4,12 +4,19 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+from typing import Any, Dict
+
+from sympy import Number
+
 from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
+    Level1BrainDomain,
     UserTrainingColumnName,
 )
+from app.services.user_processor import _build_level1_scores
 from configs.loader import load_config
-from utils.dataframe_utils import ColumnAccessor
+
+from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,7 +34,9 @@ class EvaluationService:
             max_ratio=1.2,
         )
 
-        
+
+
+
         return filtered_df
 
     def evaluate_single_user(self, user_id: str) -> dict:
@@ -239,3 +248,46 @@ class EvaluationService:
             )
 
         return distribution
+
+    @staticmethod
+    def _fetch_user_profile(user_id: str, df: pd.DataFrame, config: Dict[str, Any]) -> Dict:
+        """
+        从 patient 数据中读取用户画像（优化版）
+        """
+
+        with open(
+            config["column_mapping"][CognitiveL1DatasetName.USER_BRAIN_SCORE.value]
+        ) as f:
+            COLUMN_MAPPING = json.load(f)
+
+        cols = ColumnAccessor(COLUMN_MAPPING, UserTrainingColumnName)
+
+        user_row = df[df[cols.user_id] == user_id]
+
+        latest_level1_scores = {
+            Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.latest_memory),
+            Level1BrainDomain.EXECUTIVE.value: safe_get(user_row, cols.latest_executive),
+            Level1BrainDomain.ATTENTION.value: safe_get(user_row, cols.latest_attention),
+            Level1BrainDomain.PERCEPTION.value: safe_get(user_row, cols.latest_perception),
+        }
+        
+        last_84_days_task = safe_get(user_row, cols.last_84_days_task)
+        
+
+        profile = {
+            "user_id": safe_get(user_row, cols.user_id),
+            "patient_code": safe_get(user_row, cols.patient_code),
+            "disease_tag": safe_get(user_row, cols.disease),
+            "latest_level1_scores": latest_level1_scores,
+            "last_day_task": safe_get(user_row, cols.last_day_task),
+            "last_84_days_task": last_84_days_task,
+            "last_84_days_first_task": safe_get(user_row, cols.last_84_days_first_task),
+            "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
+        }
+
+        for week in range(1, 12):
+            profile[f"week{week}_level1_scores"] = _build_level1_scores(
+                user_row, cols, week
+            )
+
+        return profile
