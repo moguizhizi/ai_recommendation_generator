@@ -177,6 +177,10 @@ columns:
     - 最后一天训练任务
     - 最近七天未训练任务
     - 最近84天训练任务
+    - 倒数第一个84天_最新_感知觉
+    - 倒数第一个84天_最新_注意力
+    - 倒数第一个84天_最新_记忆力
+    - 倒数第一个84天_最新_执行控制
     - 倒数第一个84天训练任务
 
 raw_to_processed:
@@ -195,3 +199,11 @@ task:
   user_brain_score: data/internal/processed/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
   training_task: data/internal/processed/cognitive_l1/alg_training_task_child.parquet
   repository: data/internal/processed/cognitive_l1/task_repository.json
+
+train_eval_dataset:
+
+  alg_cogtrain_brainscore_task_child:
+
+    source: data/internal/processed/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
+
+    dataset: data/internal/processed/cognitive_l1/alg_cogtrain_brainscore_task_child_train_eval_dataset.parquet
