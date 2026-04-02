@@ -11,6 +11,7 @@ from llm.factory import create_llm
 
 from app.controllers.chat_controller import router as chat_router
 from app.controllers.health_controller import router as health_router
+from app.controllers.evaluation_controller import router as eval_router
 
 from utils.logger import setup_logging, get_logger
 from models.model_factory import ModelManager
@@ -57,3 +58,4 @@ app.add_exception_handler(Exception, generic_error_handler)
 
 app.include_router(chat_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
+app.include_router(eval_router, prefix="/api")

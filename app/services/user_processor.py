@@ -157,6 +157,7 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         "latest_level1_scores": latest_level1_scores,
         "last_day_task": safe_get(user_row, cols.last_day_task),
         "last_84_days_task": last_84_days_task,
+        "last_84_days_first_task": safe_get(user_row, cols.last_84_days_first_task),
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
     }
 

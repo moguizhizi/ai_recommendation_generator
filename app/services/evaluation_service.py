@@ -50,6 +50,7 @@ class EvaluationService:
         )
         output_columns = metrics_cfg["output_columns"]
         stats_to_report = metrics_cfg.get("stats", ["max", "min", "mean", "var"])
+        ratio_ranges = metrics_cfg.get("ratio_ranges", [])
 
         df = pd.read_parquet(dataset_path)
 
@@ -75,6 +76,10 @@ class EvaluationService:
         ratio_series = df[output_columns["ratio"]]
         count_diff_stats = self._build_stats(count_diff_series, stats_to_report)
         ratio_stats = self._build_stats(ratio_series, stats_to_report)
+        ratio_range_distribution = self._build_ratio_range_distribution(
+            ratio_series,
+            ratio_ranges,
+        )
 
         logger.info(
             "[EVALUATE_ALL_USERS] dataset=%s rows=%s",
@@ -83,6 +88,10 @@ class EvaluationService:
         )
         logger.info("[EVALUATE_ALL_USERS] task_diff_count stats %s", count_diff_stats)
         logger.info("[EVALUATE_ALL_USERS] task_diff_ratio stats %s", ratio_stats)
+        logger.info(
+            "[EVALUATE_ALL_USERS] task_diff_ratio range distribution %s",
+            ratio_range_distribution,
+        )
 
         return {
             "dataset_path": str(analyzed_dataset_path),
@@ -91,6 +100,7 @@ class EvaluationService:
             "count_diff_column": output_columns["diff_count"],
             "count_diff_stats": count_diff_stats,
             "ratio_stats": ratio_stats,
+            "ratio_range_distribution": ratio_range_distribution,
         }
 
     def evaluate_single_user(self, user_id: str) -> dict:
@@ -140,3 +150,38 @@ class EvaluationService:
             for stat in stats_to_report
             if stat in supported_stats
         }
+
+    @staticmethod
+    def _build_ratio_range_distribution(
+        series: pd.Series,
+        ratio_ranges: list[dict],
+    ) -> list[dict]:
+        if series.empty or not ratio_ranges:
+            return []
+
+        total = len(series)
+        distribution = []
+
+        for range_cfg in ratio_ranges:
+            label = range_cfg["label"]
+            min_value = range_cfg.get("min")
+            max_value = range_cfg.get("max")
+
+            mask = pd.Series(True, index=series.index)
+            if min_value is not None:
+                mask &= series >= min_value
+            if max_value is not None:
+                mask &= series < max_value
+
+            count = int(mask.sum())
+            distribution.append(
+                {
+                    "label": label,
+                    "min": min_value,
+                    "max": max_value,
+                    "count": count,
+                    "ratio": round(count / total, 6),
+                }
+            )
+
+        return distribution
