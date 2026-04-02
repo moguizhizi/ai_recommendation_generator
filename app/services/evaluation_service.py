@@ -39,6 +39,42 @@ class EvaluationService:
         ) as f:
             column_mapping = json.load(f)
 
+        df = pd.read_parquet(dataset_path)
+        analysis_result = self._analyze_task_count_comparison(
+            df=df,
+            column_mapping=column_mapping,
+            metrics_cfg=metrics_cfg,
+        )
+        df = analysis_result["df"]
+
+        analyzed_dataset_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(analyzed_dataset_path, index=False)
+        self._log_analysis_result(
+            analyzed_dataset_path=analyzed_dataset_path,
+            rows=len(df),
+            analysis_result=analysis_result,
+        )
+
+        return self._build_analysis_response(
+            analyzed_dataset_path=analyzed_dataset_path,
+            rows=len(df),
+            analysis_result=analysis_result,
+        )
+
+    def evaluate_single_user(self, user_id: str) -> dict:
+        """单用户评估"""
+        raise NotImplementedError("evaluate_single_user is not implemented yet")
+
+    def compute_metrics(self, history, actual, recommended) -> dict:
+        """计算指标（L1 / 提升等）"""
+        raise NotImplementedError("compute_metrics is not implemented yet")
+
+    def _analyze_task_count_comparison(
+        self,
+        df: pd.DataFrame,
+        column_mapping: dict,
+        metrics_cfg: dict,
+    ) -> dict:
         cols = ColumnAccessor(column_mapping, UserTrainingColumnName)
         base_column = self._resolve_column(
             cols,
@@ -52,8 +88,7 @@ class EvaluationService:
         stats_to_report = metrics_cfg.get("stats", ["max", "min", "mean", "var"])
         ratio_ranges = metrics_cfg.get("ratio_ranges", [])
 
-        df = pd.read_parquet(dataset_path)
-
+        df = df.copy()
         df[output_columns["base_count"]] = df[base_column].apply(self._count_tasks)
         df[output_columns["compare_count"]] = df[compare_column].apply(
             self._count_tasks
@@ -69,47 +104,60 @@ class EvaluationService:
             axis=1,
         )
 
-        analyzed_dataset_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(analyzed_dataset_path, index=False)
-
         count_diff_series = df[output_columns["diff_count"]]
         ratio_series = df[output_columns["ratio"]]
-        count_diff_stats = self._build_stats(count_diff_series, stats_to_report)
-        ratio_stats = self._build_stats(ratio_series, stats_to_report)
-        ratio_range_distribution = self._build_ratio_range_distribution(
-            ratio_series,
-            ratio_ranges,
-        )
 
+        return {
+            "df": df,
+            "output_columns": output_columns,
+            "count_diff_stats": self._build_stats(count_diff_series, stats_to_report),
+            "ratio_stats": self._build_stats(ratio_series, stats_to_report),
+            "ratio_range_distribution": self._build_ratio_range_distribution(
+                ratio_series,
+                ratio_ranges,
+            ),
+        }
+
+    @staticmethod
+    def _log_analysis_result(
+        analyzed_dataset_path: Path,
+        rows: int,
+        analysis_result: dict,
+    ) -> None:
         logger.info(
             "[EVALUATE_ALL_USERS] dataset=%s rows=%s",
             analyzed_dataset_path,
-            len(df),
+            rows,
         )
-        logger.info("[EVALUATE_ALL_USERS] task_diff_count stats %s", count_diff_stats)
-        logger.info("[EVALUATE_ALL_USERS] task_diff_ratio stats %s", ratio_stats)
+        logger.info(
+            "[EVALUATE_ALL_USERS] task_diff_count stats %s",
+            analysis_result["count_diff_stats"],
+        )
+        logger.info(
+            "[EVALUATE_ALL_USERS] task_diff_ratio stats %s",
+            analysis_result["ratio_stats"],
+        )
         logger.info(
             "[EVALUATE_ALL_USERS] task_diff_ratio range distribution %s",
-            ratio_range_distribution,
+            analysis_result["ratio_range_distribution"],
         )
 
+    @staticmethod
+    def _build_analysis_response(
+        analyzed_dataset_path: Path,
+        rows: int,
+        analysis_result: dict,
+    ) -> dict:
+        output_columns = analysis_result["output_columns"]
         return {
             "dataset_path": str(analyzed_dataset_path),
-            "rows": int(len(df)),
+            "rows": int(rows),
             "ratio_column": output_columns["ratio"],
             "count_diff_column": output_columns["diff_count"],
-            "count_diff_stats": count_diff_stats,
-            "ratio_stats": ratio_stats,
-            "ratio_range_distribution": ratio_range_distribution,
+            "count_diff_stats": analysis_result["count_diff_stats"],
+            "ratio_stats": analysis_result["ratio_stats"],
+            "ratio_range_distribution": analysis_result["ratio_range_distribution"],
         }
-
-    def evaluate_single_user(self, user_id: str) -> dict:
-        """单用户评估"""
-        raise NotImplementedError("evaluate_single_user is not implemented yet")
-
-    def compute_metrics(self, history, actual, recommended) -> dict:
-        """计算指标（L1 / 提升等）"""
-        raise NotImplementedError("compute_metrics is not implemented yet")
 
     @staticmethod
     def _count_tasks(val) -> int:
