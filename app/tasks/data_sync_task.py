@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from app.data.datasets.cognitive_l1_dataset import load_and_preprocess_dataset
-from app.services.task_processor import build_task_repository
+from app.services.task_processor import build_task_repository, build_train_eval_dataset
 from utils.csv_utils import csv_to_parquet
 from utils.io_utils import copy_file
 from utils.logger import get_logger
@@ -121,5 +121,34 @@ async def task_repository_job(config, interval_seconds):
             await asyncio.to_thread(build_task_repository, config)
         except Exception:
             logger.exception("Repository build failed")
+
+        await asyncio.sleep(interval_seconds)
+
+async def build_train_eval_dataset_job(config, interval_seconds):
+    """
+    后台任务：周期性构建训练 / 验证数据集
+
+    流程：
+    1. 等待 CSV 数据同步完成（数据准备阶段）
+    2. 触发数据集构建（训练 / 验证数据）
+    3. 按固定时间间隔循环执行，保证数据持续更新
+
+    Args:
+        config: 配置项
+        interval_seconds: 每次构建的间隔时间（秒）
+    """
+
+    logger.info("Waiting for CSV sync...")
+
+    await sync_state.csv_ready_event.wait()
+
+    logger.info("CSV ready. Start building train/eval dataset")
+
+    while True:
+
+        try:
+            await asyncio.to_thread(build_train_eval_dataset, config)
+        except Exception:
+            logger.exception("Train/eval dataset build failed")
 
         await asyncio.sleep(interval_seconds)
