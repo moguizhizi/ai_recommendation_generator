@@ -49,7 +49,8 @@ def fetch_task_info(config: Dict[str, Any]) -> Dict[str, Any]:
         task = {
             "task_id": safe_get(row, cols.task_id),
             "task_name": safe_get(row, cols.task_name),
-            "age_group": safe_get(row, cols.age_group),
+            "age_min": safe_get(row, cols.age_min),
+            "age_max": safe_get(row, cols.age_max),
             "paradigm": safe_get(row, cols.paradigm),
             "cognitive_domain": safe_get(row, cols.cognitive_domain),
             "sub_cognitive_domain": safe_get(row, cols.sub_cognitive_domain),

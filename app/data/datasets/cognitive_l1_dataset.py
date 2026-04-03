@@ -157,6 +157,8 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
         cols = ColumnAccessor(COLUMN_MAPPING, TaskColumnName)
 
         numeric_fields = [
+            cols.age_min,
+            cols.age_max,
             cols.difficulty,
             cols.start_level,
             cols.level_max,

@@ -8,7 +8,8 @@ class TaskColumnName(str, Enum):
 
     TASK_ID = "任务id"
     TASK_NAME = "任务"
-    AGE_GROUP = "年龄段"
+    AGE_MIN = "年龄最小值"
+    AGE_MAX = "年龄最大值"
     PARADIGM = "范式"
     COGNITIVE_DOMAIN = "一级脑能力"
     SUB_COGNITIVE_DOMAIN = "二级脑能力"

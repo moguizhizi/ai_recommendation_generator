@@ -1,7 +1,8 @@
 {
     "任务id": "task_id",
     "任务": "task_name",
-    "年龄段": "age_group",
+    "年龄最小值": "age_min",
+    "年龄最大值": "age_max",
     "范式": "paradigm",
     "一级脑能力": "cognitive_domain",
     "二级脑能力": "sub_cognitive_domain",

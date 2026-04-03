@@ -11,7 +11,8 @@ class Task(BaseModel):
 
     task_id: str = Field(..., title="任务ID")
     task_name: str = Field(..., title="任务名称")
-    age_group: Optional[str] = Field(None, title="年龄段")
+    age_min: Optional[float] = Field(None, title="年龄最小值")
+    age_max: Optional[float] = Field(None, title="年龄最大值")
 
     paradigm: Optional[str] = Field(None, title="训练范式")
     cognitive_domain: Optional[str] = Field(None, title="一级脑能力")
