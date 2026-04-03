@@ -21,12 +21,14 @@ from configs.loader import load_config
 
 from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
-from utils.metrics_utils import compute_l1_from_distributions
+from utils.metrics_utils import compute_kl_from_distributions, compute_l1_from_distributions
 
 logger = get_logger(__name__)
 
 
 class EvaluationService:
+    ROUND_DIGITS = 3
+
     def __init__(self, config: dict | None = None):
         self.config = config or load_config()
 
@@ -76,6 +78,7 @@ class EvaluationService:
                     profile,
                     profile["last_84d_latest_level1_scores"],
                     task_repo,
+                    k=len(profile["last_84_days_task_infos"])
                 )
 
                 ground_truth_l2_distribution = build_l2_distribution_from_tasks(
@@ -89,6 +92,10 @@ class EvaluationService:
                     ground_truth_l2_distribution,
                     pred_l2_distribution,
                 )
+                task_hit_result = self._compute_task_hit_metrics(
+                    recommended_tasks=recommended_tasks,
+                    ground_truth_tasks=profile["last_84_days_task_infos"],
+                )
             except Exception:
                 logger.exception(
                     "[EVALUATE_ALL_USERS] failed to compute metrics for user_id=%s",
@@ -101,6 +108,7 @@ class EvaluationService:
                     "user_id": user_id,
                     "patient_code": profile.get("patient_code"),
                     **user_metric_result,
+                    **task_hit_result,
                 }
             )
 
@@ -109,6 +117,7 @@ class EvaluationService:
             metrics_df,
             metric_names,
         )
+        task_hit_summary = self._build_task_hit_summary(metrics_df)
 
         result = {
             "total_users": len(filtered_df),
@@ -116,6 +125,7 @@ class EvaluationService:
             "skipped_users": len(filtered_df) - len(metrics_df),
             "metric_names": metric_names,
             "metrics_summary": metrics_summary,
+            "task_hit_summary": task_hit_summary,
         }
 
         self._save_evaluation_result(
@@ -284,7 +294,7 @@ class EvaluationService:
     def _compute_ratio(last_84_days_task_count: int, last_84_days_first_task_count: int) -> float:
         if last_84_days_first_task_count == 0:
             return 0.0
-        return round(last_84_days_task_count / last_84_days_first_task_count, 2)
+        return round(last_84_days_task_count / last_84_days_first_task_count, EvaluationService.ROUND_DIGITS)
 
     @staticmethod
     def _resolve_column(cols: ColumnAccessor, raw_column_name: str) -> str:
@@ -303,7 +313,7 @@ class EvaluationService:
             "var": lambda s: float(s.var()),
         }
         return {
-            stat: supported_stats[stat](series)
+            stat: round(supported_stats[stat](series), EvaluationService.ROUND_DIGITS)
             for stat in stats_to_report
             if stat in supported_stats
         }
@@ -337,7 +347,7 @@ class EvaluationService:
                     "min": min_value,
                     "max": max_value,
                     "count": count,
-                    "ratio": round(count / total, 6),
+                    "ratio": round(count / total, EvaluationService.ROUND_DIGITS),
                 }
             )
 
@@ -358,7 +368,16 @@ class EvaluationService:
                         ground_truth_l2_distribution,
                         pred_l2_distribution,
                     ),
-                    2,
+                    EvaluationService.ROUND_DIGITS,
+                )
+                continue
+            if metric_name == "kl_value":
+                metrics[metric_name] = round(
+                    compute_kl_from_distributions(
+                        ground_truth_l2_distribution,
+                        pred_l2_distribution,
+                    ),
+                    EvaluationService.ROUND_DIGITS,
                 )
                 continue
 
@@ -382,6 +401,67 @@ class EvaluationService:
             )
 
         return summaries
+
+    def _build_task_hit_summary(self, metrics_df: pd.DataFrame) -> dict:
+        task_hit_columns = [
+            "task_hit_count",
+            "recommended_task_count",
+            "ground_truth_task_count",
+            "task_hit_rate",
+            "task_cover_rate",
+        ]
+        summaries = {}
+        empty_series = pd.Series(dtype=float)
+
+        for column in task_hit_columns:
+            series = metrics_df[column] if column in metrics_df else empty_series
+            summaries[column] = self._build_stats(
+                series,
+                ["max", "min", "mean", "var"],
+            )
+
+        return summaries
+
+    @staticmethod
+    def _compute_task_hit_metrics(
+        recommended_tasks: list,
+        ground_truth_tasks: list,
+    ) -> dict:
+        pred_task_map = {
+            str(task.task_id): task
+            for task in recommended_tasks
+            if getattr(task, "task_id", None)
+        }
+        gt_task_map = {
+            str(task.task_id): task
+            for task in ground_truth_tasks
+            if getattr(task, "task_id", None)
+        }
+
+        hit_task_ids = sorted(set(pred_task_map) & set(gt_task_map))
+        hit_count = len(hit_task_ids)
+        recommended_count = len(pred_task_map)
+        ground_truth_count = len(gt_task_map)
+
+        return {
+            "task_hit_count": hit_count,
+            "recommended_task_count": recommended_count,
+            "ground_truth_task_count": ground_truth_count,
+            "task_hit_rate": round(
+                hit_count / recommended_count if recommended_count else 0.0,
+                EvaluationService.ROUND_DIGITS,
+            ),
+            "task_cover_rate": round(
+                hit_count / ground_truth_count if ground_truth_count else 0.0,
+                EvaluationService.ROUND_DIGITS,
+            ),
+            "hit_task_ids": hit_task_ids,
+            "hit_task_names": [
+                pred_task_map[task_id].task_name
+                for task_id in hit_task_ids
+                if getattr(pred_task_map[task_id], "task_name", None)
+            ],
+        }
 
     @staticmethod
     def _save_evaluation_result(
