@@ -17,7 +17,6 @@ def start_sync_tasks(config):
 
     task_config = config.get("csv_to_parquet", {})
     interval = task_config.get("interval_seconds", 300)
-
     raw_files = task_config.get("raw_files", [])
 
     sync_state.total_csv_jobs = len(raw_files)
