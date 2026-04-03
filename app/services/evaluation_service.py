@@ -13,13 +13,14 @@ from app.core.cognitive_l1.constants import (
     Level1BrainDomain,
     UserTrainingColumnName,
 )
-from app.services.plan_rule_engine import enrich_user_profile_with_brain_distribution
-from app.services.task_processor import get_task_repository
+from app.services.plan_rule_engine import build_L2_brain_ability_treemap, build_l2_distribution_from_tasks, enrich_user_profile_with_brain_distribution
+from app.services.task_processor import build_task_infos, get_task_repository
 from app.services.user_processor import _build_level1_scores
 from configs.loader import load_config
 
 from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
+from utils.metrics_utils import compute_l1_from_distributions
 
 logger = get_logger(__name__)
 
@@ -31,18 +32,105 @@ class EvaluationService:
     def evaluate_all_users(self) -> dict:
         """统计 train_eval_dataset 中两段任务列表的数量差异比。"""
 
+        evaluation_cfg = self.config.get("recommendation_evaluation", {})
+        if not evaluation_cfg.get("enabled", True):
+            logger.info("[EVALUATE_ALL_USERS] recommendation_evaluation is disabled")
+            return {"enabled": False}
+
+        filter_cfg = evaluation_cfg.get("filter", {})
+        metric_names = evaluation_cfg.get("metrics", ["l1_value"])
+
         filtered_df = self._prepare_filtered_analysis_df(
-            min_ratio=0.8,
-            max_ratio=1.2,
+            min_ratio=filter_cfg.get("min_ratio", 0.8),
+            max_ratio=filter_cfg.get("max_ratio", 1.2),
         )
 
         task_repo = get_task_repository(config=self.config)
+        with open(
+            self.config["column_mapping"][CognitiveL1DatasetName.USER_BRAIN_SCORE.value]
+        ) as f:
+            column_mapping = json.load(f)
 
-        profile = self._fetch_user_profile("55", filtered_df, config=self.config)
-        profile = enrich_user_profile_with_brain_distribution(profile, profile.get("last_84_days_first_task"),task_repo)
+        cols = ColumnAccessor(column_mapping, UserTrainingColumnName)
+        metric_results = []
 
+        for _, user_row in filtered_df.iterrows():
+            user_id = str(safe_get(user_row, cols.user_id))
 
-        return filtered_df
+            try:
+                profile = self._fetch_user_profile(
+                    user_row,
+                    config=self.config,
+                )
+                profile["last_84_days_task_infos"] = build_task_infos(
+                    profile["last_84_days_task"],
+                    task_repo,
+                )
+                profile = enrich_user_profile_with_brain_distribution(
+                    profile,
+                    profile.get("last_84_days_first_task"),
+                    task_repo,
+                )
+                recommended_tasks, _ = build_L2_brain_ability_treemap(
+                    profile,
+                    profile["last_84d_latest_level1_scores"],
+                    task_repo,
+                )
+
+                ground_truth_l2_distribution = build_l2_distribution_from_tasks(
+                    profile["last_84_days_task_infos"]
+                )
+                pred_l2_distribution = build_l2_distribution_from_tasks(
+                    recommended_tasks
+                )
+                user_metric_result = self._compute_recommendation_metrics(
+                    metric_names,
+                    ground_truth_l2_distribution,
+                    pred_l2_distribution,
+                )
+            except Exception:
+                logger.exception(
+                    "[EVALUATE_ALL_USERS] failed to compute metrics for user_id=%s",
+                    user_id,
+                )
+                continue
+
+            metric_results.append(
+                {
+                    "user_id": user_id,
+                    "patient_code": profile.get("patient_code"),
+                    **user_metric_result,
+                }
+            )
+
+        metrics_df = pd.DataFrame(metric_results)
+        metrics_summary = self._build_metric_summaries(
+            metrics_df,
+            metric_names,
+        )
+
+        result = {
+            "total_users": len(filtered_df),
+            "computed_users": len(metrics_df),
+            "skipped_users": len(filtered_df) - len(metrics_df),
+            "metric_names": metric_names,
+            "metrics_summary": metrics_summary,
+        }
+
+        self._save_evaluation_result(
+            result=result,
+            metrics_df=metrics_df,
+            output_cfg=evaluation_cfg.get("output", {}),
+        )
+
+        logger.info(
+            "[EVALUATE_ALL_USERS] metrics_summary=%s computed_users=%s skipped_users=%s",
+            metrics_summary,
+            len(metrics_df),
+            len(filtered_df) - len(metrics_df),
+        )
+
+        return result
 
     def evaluate_single_user(self, user_id: str) -> dict:
         """单用户评估"""
@@ -255,7 +343,67 @@ class EvaluationService:
         return distribution
 
     @staticmethod
-    def _fetch_user_profile(user_id: str, df: pd.DataFrame, config: Dict[str, Any]) -> Dict:
+    def _compute_recommendation_metrics(
+        metric_names: list[str],
+        ground_truth_l2_distribution: list[dict],
+        pred_l2_distribution: list[dict],
+    ) -> dict:
+        metrics = {}
+
+        for metric_name in metric_names:
+            if metric_name == "l1_value":
+                metrics[metric_name] = round(
+                    compute_l1_from_distributions(
+                        ground_truth_l2_distribution,
+                        pred_l2_distribution,
+                    ),
+                    2,
+                )
+                continue
+
+            raise ValueError(f"Unsupported recommendation metric: {metric_name}")
+
+        return metrics
+
+    def _build_metric_summaries(
+        self,
+        metrics_df: pd.DataFrame,
+        metric_names: list[str],
+    ) -> dict:
+        summaries = {}
+        empty_series = pd.Series(dtype=float)
+
+        for metric_name in metric_names:
+            series = metrics_df[metric_name] if metric_name in metrics_df else empty_series
+            summaries[metric_name] = self._build_stats(
+                series,
+                ["max", "min", "mean", "var"],
+            )
+
+        return summaries
+
+    @staticmethod
+    def _save_evaluation_result(
+        result: dict,
+        metrics_df: pd.DataFrame,
+        output_cfg: dict,
+    ) -> None:
+        summary_file = output_cfg.get("summary_file")
+        details_file = output_cfg.get("details_file")
+
+        if summary_file:
+            summary_path = Path(summary_file)
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(summary_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+
+        if details_file:
+            details_path = Path(details_file)
+            details_path.parent.mkdir(parents=True, exist_ok=True)
+            metrics_df.to_parquet(details_path, index=False)
+
+    @staticmethod
+    def _fetch_user_profile(user_row: pd.Series, config: Dict[str, Any]) -> Dict:
         """
         从 patient 数据中读取用户画像（优化版）
         """
@@ -266,8 +414,6 @@ class EvaluationService:
             COLUMN_MAPPING = json.load(f)
 
         cols = ColumnAccessor(COLUMN_MAPPING, UserTrainingColumnName)
-
-        user_row = df[df[cols.user_id] == user_id]
 
         latest_level1_scores = {
             Level1BrainDomain.MEMORY.value: safe_get(user_row, cols.latest_memory),

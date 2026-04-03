@@ -5,7 +5,6 @@ from collections import defaultdict
 from numbers import Number
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
-from utils.metrics_utils import compute_l1_from_distributions, l1_similarity
 
 import numpy as np
 import pandas as pd
@@ -1094,7 +1093,7 @@ def build_l2_distribution_from_tasks(
 ) -> List[Dict[str, Any]]:
     """
     统计推荐任务中的二级脑能力分布
-    返回：[{name, count, ratio}]
+    返回：[{l2_index, name, count, ratio}]
     """
 
     counter = defaultdict(int)
@@ -1114,6 +1113,7 @@ def build_l2_distribution_from_tasks(
 
     for l2_idx, count in counter.items():
         result.append({
+            "l2_index": int(l2_idx),
             "name": L2_INDEX_REVERSE.get(l2_idx, f"unknown_{l2_idx}"),
             "count": int(count),
             "ratio": round(count / total, 3)  # ✅ 保留3位小数
@@ -1172,32 +1172,6 @@ def build_L2_brain_ability_treemap(
     ]
 
     return recommended_tasks, l2_stats
-
-
-def validate_recommendation_performance(
-    history_tasks: List[Task],
-    recommended_tasks: List[Task],
-) -> Dict[str, Any]:
-    """
-    验证推荐结果对目标矩阵高权重坐标的命中情况。
-
-    命中率定义：
-    - hit_rate: 推荐结果中，brain_coord 命中目标矩阵 Top N 坐标的占比
-    - unique_hit_rate: 去重后 task_id 维度的命中占比
-    """
-
-    # 构建分布
-    history_dist = build_l2_distribution_from_tasks(history_tasks)
-    recommend_dist = build_l2_distribution_from_tasks(recommended_tasks)
-
-    # 计算 L1
-    l1 = compute_l1_from_distributions(history_dist, recommend_dist)
-
-    # 3️⃣ 转换成相似度（更直观）
-    sim = l1_similarity(l1)
-
-    
-
 
 
 def render_plan_text(plan: AIRecPlanData) -> str:

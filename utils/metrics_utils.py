@@ -41,11 +41,11 @@ def l1_distance(p, q):
 # ===============================
 # 分布 → L1
 # ===============================
-def compute_l1_from_distributions(history_dist, recommend_dist):
+def compute_l1_from_distributions(ground_true_dist, recommend_dist):
     """
     从 distribution 直接计算 L1
     """
-    p_vec = to_l2_vector(history_dist)
+    p_vec = to_l2_vector(ground_true_dist)
     q_vec = to_l2_vector(recommend_dist)
 
     return l1_distance(p_vec, q_vec)

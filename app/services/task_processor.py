@@ -198,6 +198,30 @@ def get_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
     return repo
 
 
+def build_task_infos(
+    task_values: List[str],
+    task_repo: Dict[str, Any],
+) -> List[Task]:
+    task_index: Dict[str, Task] = task_repo.get("task_index", {})
+    task_infos: List[Task] = []
+
+    for task_str in task_values:
+        if not isinstance(task_str, str) or "_" not in task_str:
+            logger.warning("[TASK_INFOS] invalid task format: %s", task_str)
+            continue
+
+        task_id = task_str.split("_", 1)[0]
+        task_obj = task_index.get(task_id)
+
+        if not task_obj:
+            logger.warning("[TASK_INFOS] task_id=%s not found in repo", task_id)
+            continue
+
+        task_infos.append(task_obj)
+
+    return task_infos
+
+
 def build_train_eval_dataset(config: Dict[str, Any]):
     """
     按条件筛选有效样本并保存 dataset 文件
