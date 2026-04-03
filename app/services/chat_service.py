@@ -17,7 +17,6 @@ from app.services.plan_rule_engine import (
     enrich_user_profile_with_tasks,
     get_fixed_templates,
     render_plan_text,
-    validate_recommendation_performance,
 )
 from app.services.task_processor import (
     build_level2_to_level1_map,

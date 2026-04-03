@@ -34,6 +34,17 @@ recommendation_validation:
   enabled: false
   top_n_targets: 5
 
+recommendation_evaluation:
+  enabled: true
+  filter:
+    min_ratio: 0.3
+    max_ratio: 1.7
+  metrics:
+    - l1_value
+  output:
+    summary_file: data/internal/processed/cognitive_l1/recommendation_evaluation_summary.json
+    details_file: data/internal/processed/cognitive_l1/recommendation_evaluation_details.parquet
+
 # debug:
 #   dataset_row_limits:
 #     alg_cogtrain_brainscore_task_child: 5000
