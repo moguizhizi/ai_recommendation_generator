@@ -1,6 +1,7 @@
 # app/services/plan_rule_engine.py
 import json
 import random
+import re
 from collections import defaultdict
 from numbers import Number
 from pathlib import Path
@@ -1088,6 +1089,51 @@ def recommend_tasks(
     return random.choices(task_list, weights=scores, k=k)
 
 
+def _parse_age_value(age: Any) -> float | None:
+    if age is None:
+        return None
+
+    if isinstance(age, (int, float)):
+        return float(age)
+
+    age_str = str(age).strip()
+    if not age_str:
+        return None
+
+    match = re.search(r"\d+(?:\.\d+)?", age_str)
+    if not match:
+        return None
+
+    return float(match.group())
+
+
+def _is_task_age_compatible(task: Task, user_age: Any) -> bool:
+    age_value = _parse_age_value(user_age)
+    if age_value is None:
+        return True
+
+    task_age_group = getattr(task, "age_group", None)
+    if not task_age_group:
+        return True
+
+    age_group_str = str(task_age_group).strip()
+    numbers = [float(item) for item in re.findall(r"\d+(?:\.\d+)?", age_group_str)]
+
+    if not numbers:
+        return True
+
+    if len(numbers) >= 2:
+        lower = min(numbers[0], numbers[1])
+        upper = max(numbers[0], numbers[1])
+        return lower <= age_value <= upper
+
+    threshold = numbers[0]
+    if "+" in age_group_str:
+        return age_value >= threshold
+
+    return age_value == threshold
+
+
 def build_l2_distribution_from_tasks(
     tasks: List[Task],
 ) -> List[Dict[str, Any]]:
@@ -1140,6 +1186,13 @@ def build_L2_brain_ability_treemap(
     """
 
     task_list = task_repo["task_list"]
+    user_age = profile.get("age")
+    filtered_task_list = [
+        task for task in task_list
+        if _is_task_age_compatible(task, user_age)
+    ]
+    if filtered_task_list:
+        task_list = filtered_task_list
 
     brain_distribution = profile.get("brain_distribution")
     if not brain_distribution:
