@@ -40,12 +40,15 @@ class EvaluationService:
             logger.info("[EVALUATE_ALL_USERS] recommendation_evaluation is disabled")
             return {"enabled": False}
 
+        developer_view = evaluation_cfg.get("developer_view", True)
         filter_cfg = evaluation_cfg.get("filter", {})
         metric_names = evaluation_cfg.get("metrics", ["l1_value"])
+        min_ratio = filter_cfg.get("min_ratio", 0.8)
+        max_ratio = filter_cfg.get("max_ratio", 1.2)
 
         filtered_df = self._prepare_filtered_analysis_df(
-            min_ratio=filter_cfg.get("min_ratio", 0.8),
-            max_ratio=filter_cfg.get("max_ratio", 1.2),
+            min_ratio=min_ratio,
+            max_ratio=max_ratio,
         )
 
         task_repo = get_task_repository(config=self.config)
@@ -123,10 +126,17 @@ class EvaluationService:
             "total_users": len(filtered_df),
             "computed_users": len(metrics_df),
             "skipped_users": len(filtered_df) - len(metrics_df),
+            "min_ratio": min_ratio,
+            "max_ratio": max_ratio,
             "metric_names": metric_names,
             "metrics_summary": metrics_summary,
             "task_hit_summary": task_hit_summary,
         }
+        response_result = (
+            result
+            if developer_view
+            else self._build_external_result(result)
+        )
 
         self._save_evaluation_result(
             result=result,
@@ -141,7 +151,7 @@ class EvaluationService:
             len(filtered_df) - len(metrics_df),
         )
 
-        return result
+        return response_result
 
     def evaluate_single_user(self, user_id: str) -> dict:
         """单用户评估"""
@@ -405,7 +415,9 @@ class EvaluationService:
     def _build_task_hit_summary(self, metrics_df: pd.DataFrame) -> dict:
         task_hit_columns = [
             "task_hit_count",
+            "recommended_task_total_count",
             "recommended_task_count",
+            "ground_truth_task_total_count",
             "ground_truth_task_count",
             "task_hit_rate",
             "task_cover_rate",
@@ -421,6 +433,30 @@ class EvaluationService:
             )
 
         return summaries
+
+    @staticmethod
+    def _build_external_result(result: dict) -> dict:
+        metric_summary = {}
+        for metric_name, stats in result.get("metrics_summary", {}).items():
+            metric_summary[metric_name] = {
+                "mean": stats.get("mean", 0.0),
+                "min": stats.get("min", 0.0),
+                "max": stats.get("max", 0.0),
+            }
+
+        task_hit_summary = result.get("task_hit_summary", {})
+
+        return {
+            "total_users": result.get("total_users", 0),
+            "computed_users": result.get("computed_users", 0),
+            "skipped_users": result.get("skipped_users", 0),
+            "metrics": metric_summary,
+            "task_hit": {
+                "mean_hit_count": task_hit_summary.get("task_hit_count", {}).get("mean", 0.0),
+                "mean_hit_rate": task_hit_summary.get("task_hit_rate", {}).get("mean", 0.0),
+                "mean_cover_rate": task_hit_summary.get("task_cover_rate", {}).get("mean", 0.0),
+            },
+        }
 
     @staticmethod
     def _compute_task_hit_metrics(
@@ -440,12 +476,16 @@ class EvaluationService:
 
         hit_task_ids = sorted(set(pred_task_map) & set(gt_task_map))
         hit_count = len(hit_task_ids)
+        recommended_total_count = len(recommended_tasks)
         recommended_count = len(pred_task_map)
+        ground_truth_total_count = len(ground_truth_tasks)
         ground_truth_count = len(gt_task_map)
 
         return {
             "task_hit_count": hit_count,
+            "recommended_task_total_count": recommended_total_count,
             "recommended_task_count": recommended_count,
+            "ground_truth_task_total_count": ground_truth_total_count,
             "ground_truth_task_count": ground_truth_count,
             "task_hit_rate": round(
                 hit_count / recommended_count if recommended_count else 0.0,

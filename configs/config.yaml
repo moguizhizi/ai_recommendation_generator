@@ -36,11 +36,12 @@ recommendation_validation:
 
 recommendation_evaluation:
   enabled: true
+  developer_view: false
   filter:
-    min_ratio: 0.3
-    max_ratio: 1.7
+    min_ratio: 0.8
+    max_ratio: 1.2
   metrics:
-    - l1_value
+    - kl_value
   output:
     summary_file: data/internal/processed/cognitive_l1/recommendation_evaluation_summary.json
     details_file: data/internal/processed/cognitive_l1/recommendation_evaluation_details.parquet
@@ -99,6 +100,8 @@ columns:
   alg_training_task_child:
     - 任务id
     - 任务
+    - 年龄最小值
+    - 年龄最大值
     - 范式
     - 一级脑能力
     - 二级脑能力
