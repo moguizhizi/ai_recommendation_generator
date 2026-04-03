@@ -1112,26 +1112,17 @@ def _is_task_age_compatible(task: Task, user_age: Any) -> bool:
     if age_value is None:
         return True
 
-    task_age_group = getattr(task, "age_group", None)
-    if not task_age_group:
+    age_min = _parse_age_value(getattr(task, "age_min", None))
+    age_max = _parse_age_value(getattr(task, "age_max", None))
+
+    if age_min is None and age_max is None:
         return True
+    if age_min is not None and age_value < age_min:
+        return False
+    if age_max is not None and age_value > age_max:
+        return False
 
-    age_group_str = str(task_age_group).strip()
-    numbers = [float(item) for item in re.findall(r"\d+(?:\.\d+)?", age_group_str)]
-
-    if not numbers:
-        return True
-
-    if len(numbers) >= 2:
-        lower = min(numbers[0], numbers[1])
-        upper = max(numbers[0], numbers[1])
-        return lower <= age_value <= upper
-
-    threshold = numbers[0]
-    if "+" in age_group_str:
-        return age_value >= threshold
-
-    return age_value == threshold
+    return True
 
 
 def build_l2_distribution_from_tasks(
