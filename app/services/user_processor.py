@@ -160,6 +160,7 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
     profile = {
         "user_id": safe_get(user_row, cols.user_id),
         "patient_code": safe_get(user_row, cols.patient_code),
+        "age": safe_get(user_row, cols.age),
         "disease_tag": safe_get(user_row, cols.disease),
         "latest_level1_scores": latest_level1_scores,
         "last_84d_latest_level1_scores": last_84d_latest_level1_scores,
