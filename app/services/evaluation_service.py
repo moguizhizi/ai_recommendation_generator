@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -394,8 +395,25 @@ class EvaluationService:
         if summary_file:
             summary_path = Path(summary_file)
             summary_path.parent.mkdir(parents=True, exist_ok=True)
+            current_result = {
+                "evaluated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                **result,
+            }
+            history = []
+
+            if summary_path.exists():
+                with open(summary_path, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+                if isinstance(existing_data, list):
+                    history = existing_data
+                elif existing_data:
+                    history = [existing_data]
+
+            history.append(current_result)
+            history = history[-10:]
+
             with open(summary_path, "w", encoding="utf-8") as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
+                json.dump(history, f, ensure_ascii=False, indent=2)
 
         if details_file:
             details_path = Path(details_file)
