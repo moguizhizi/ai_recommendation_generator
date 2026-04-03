@@ -21,7 +21,7 @@ from configs.loader import load_config
 
 from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
-from utils.metrics_utils import compute_l1_from_distributions
+from utils.metrics_utils import compute_kl_from_distributions, compute_l1_from_distributions
 
 logger = get_logger(__name__)
 
@@ -76,6 +76,7 @@ class EvaluationService:
                     profile,
                     profile["last_84d_latest_level1_scores"],
                     task_repo,
+                    k=len(profile["last_84_days_task_infos"])
                 )
 
                 ground_truth_l2_distribution = build_l2_distribution_from_tasks(
@@ -359,6 +360,15 @@ class EvaluationService:
                         pred_l2_distribution,
                     ),
                     2,
+                )
+                continue
+            if metric_name == "kl_value":
+                metrics[metric_name] = round(
+                    compute_kl_from_distributions(
+                        ground_truth_l2_distribution,
+                        pred_l2_distribution,
+                    ),
+                    6,
                 )
                 continue
 
