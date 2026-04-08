@@ -855,7 +855,9 @@ def compute_baseline_prediction(
     current: float,
     *,
     horizon_weeks: int = 12,
-    min_decay: float = 5,  # 最小下降，防止完全不变
+    min_decay: float = 3,   # 最小下降，防止完全不变
+    max_decay: float = 10,  # 最大下降，防止回落过大
+    max_decay_ratio: float = 0.12,  # 最大下降占当前分值比例
 ) -> int:
     """
     无任务预测（基于历史波动幅度的下降）
@@ -890,10 +892,15 @@ def compute_baseline_prediction(
     # ----------------------
     # Step 3: 下降幅度
     # ----------------------
-    decay = (horizon_weeks / hist_len) * range_val
+    raw_decay = (horizon_weeks / hist_len) * range_val
 
-    # 控制最小下降
-    decay = max(decay, min_decay)
+    # 至少有轻微下降，避免完全不变
+    decay = max(raw_decay, min_decay)
+
+    # 同时限制绝对下降量和相对下降比例，避免回落过大
+    max_allowed_decay = min(max_decay, current * max_decay_ratio)
+    max_allowed_decay = max(max_allowed_decay, min_decay)
+    decay = min(decay, max_allowed_decay)
 
     # ----------------------
     # Step 4: 计算 baseline
@@ -905,6 +912,7 @@ def compute_baseline_prediction(
     # ----------------------
     baseline = min(baseline, current)  # 必须下降
     baseline = max(baseline, 0)        # 下界
+
 
     return int(round(baseline))
 
