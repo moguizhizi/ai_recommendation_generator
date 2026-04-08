@@ -28,6 +28,9 @@ class DimensionScorePrediction(BaseModel):
         description="在没有推荐任务干预情况下，基于历史趋势的自然预测分数",
     )
 
+class ScoreLegendItem(BaseModel):
+    label: str = Field(..., title="指标名称")
+    description: str = Field(..., title="指标说明")
 
 class ScorePredictionBlock(BaseModel):
     title: str = Field(
@@ -36,9 +39,14 @@ class ScorePredictionBlock(BaseModel):
     )
 
     summary: str = Field(
-        ...,
-        title="预测说明文案",
         default=ScorePredictionBlockDefaults.SUMMARY,
+        title="预测说明文案",
+    )
+
+    legends: List[ScoreLegendItem] = Field(
+        ...,
+        title="指标说明",
+        description="图表中各类数值的解释"
     )
 
     hint: Optional[str] = Field(

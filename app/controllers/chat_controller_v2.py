@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request
 from app.schemas.chat import AIRecPlanRequest
 from app.schemas.chat_v2 import AIRecPlanResponseV2
 from app.services.chat_service import generate_ai_plan_v2
-from llm.base import BaseLLM
 from models.model_factory import ModelManager
 from utils.logger import get_logger
 
@@ -26,9 +25,7 @@ def chat_api_v2(req: AIRecPlanRequest, request: Request):
         f"[CHAT_API_V2_START] user_id={req.user_id} patient_code={req.patient_code}"
     )
 
-    result = generate_ai_plan_v2(
-        req, model_manager=score_model_manager, config=config
-    )
+    result = generate_ai_plan_v2(req, model_manager=score_model_manager, config=config)
 
     duration = round(time.time() - start_time, 3)
 
