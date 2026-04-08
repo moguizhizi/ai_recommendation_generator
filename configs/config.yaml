@@ -213,6 +213,7 @@ task:
   user_brain_score: data/internal/processed/cognitive_l1/alg_cogtrain_brainscore_task_child.parquet
   training_task: data/internal/processed/cognitive_l1/alg_training_task_child.parquet
   repository: data/internal/processed/cognitive_l1/task_repository.json
+  level2_to_level1_map: data/internal/processed/cognitive_l1/level2_to_level1_map.json
 
 train_eval_dataset:
 

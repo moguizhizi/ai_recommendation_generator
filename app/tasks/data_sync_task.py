@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Any, Dict
 
 from app.data.datasets.cognitive_l1_dataset import load_and_preprocess_dataset
-from app.services.task_processor import build_task_repository, build_train_eval_dataset
+from app.services.task_processor import (
+    build_task_repository_assets,
+    build_train_eval_dataset,
+)
 from utils.csv_utils import csv_to_parquet
 from utils.io_utils import copy_file
 from utils.logger import get_logger
@@ -118,7 +121,7 @@ async def task_repository_job(config, interval_seconds):
     while True:
 
         try:
-            await asyncio.to_thread(build_task_repository, config)
+            await asyncio.to_thread(build_task_repository_assets, config)
         except Exception:
             logger.exception("Repository build failed")
 
