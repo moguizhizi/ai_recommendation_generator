@@ -106,6 +106,7 @@ class TrainingModule(BaseModel):
     items: List[TrainingItem] = Field(..., title="模块内训练项列表")
 
 class L2AbilityStat(BaseModel):
+    level1_name: str = Field(..., title="一级脑能力名称")
     name: str = Field(..., title="二级脑能力名称")
     count: int = Field(..., title="任务数量")
     ratio: float = Field(..., title="占比")

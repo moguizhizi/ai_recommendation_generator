@@ -21,7 +21,20 @@ logger = get_logger(__name__)
 
 
 def build_level2_to_level1_map(task_repo: Dict) -> Dict[str, str]:
-    return {}
+    level2_to_level1_map = task_repo.get("level2_to_level1_map")
+    if isinstance(level2_to_level1_map, dict):
+        return level2_to_level1_map
+
+    derived_map: Dict[str, str] = {}
+    for task in task_repo.get("task_list", []):
+        if not task.sub_cognitive_domain or "_" not in task.sub_cognitive_domain:
+            continue
+
+        level1_name, level2_name = task.sub_cognitive_domain.split("_", 1)
+        if level1_name and level2_name:
+            derived_map[level2_name] = level1_name
+
+    return derived_map
 
 
 def fetch_task_info(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -78,9 +91,46 @@ def _parse_task(t: dict) -> Task | None:
         return None
 
 
-def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
+def _build_level2_to_level1_mapping(task_list: List[Task]) -> Dict[str, str]:
+    level2_to_level1_map: Dict[str, str] = {}
+
+    for task in task_list:
+        raw_sub_domain = task.sub_cognitive_domain
+        if not raw_sub_domain:
+            continue
+
+        sub_domains = [item.strip() for item in raw_sub_domain.split(";") if item.strip()]
+
+        for sub_domain in sub_domains:
+            if "_" not in sub_domain:
+                continue
+
+            level1_name, level2_name = sub_domain.split("_", 1)
+            level1_name = level1_name.strip()
+            level2_name = level2_name.strip()
+
+            if not level1_name or not level2_name:
+                continue
+
+            existed_level1 = level2_to_level1_map.get(level2_name)
+            if existed_level1 and existed_level1 != level1_name:
+                logger.warning(
+                    "[L2_L1_MAP_CONFLICT] level2=%s existed_level1=%s new_level1=%s task_id=%s",
+                    level2_name,
+                    existed_level1,
+                    level1_name,
+                    task.task_id,
+                )
+                continue
+
+            level2_to_level1_map[level2_name] = level1_name
+
+    return level2_to_level1_map
+
+
+def build_task_repository_assets(config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    构建系统级 Task 仓库（与用户无关）
+    构建任务仓库及其派生索引文件
     """
 
     raw_task_info = fetch_task_info(config=config)
@@ -119,10 +169,13 @@ def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
     for task in task_list:
         level1_grouped[task.cognitive_domain].append(task)
 
+    level2_to_level1_map = _build_level2_to_level1_mapping(task_list)
+
     repo = {
         "task_list": task_list,
         "task_index": task_index,
         "level1_grouped_tasks": dict(level1_grouped),
+        "level2_to_level1_map": level2_to_level1_map,
     }
 
     logger.debug(
@@ -137,9 +190,11 @@ def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
     # =========================
 
     repo_path = Path(config["task"]["repository"])
+    level2_to_level1_map_path = Path(config["task"]["level2_to_level1_map"])
 
     # 如果目录不存在则创建
     repo_path.parent.mkdir(parents=True, exist_ok=True)
+    level2_to_level1_map_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Task 对象需要转换为 dict
     json_repo = {
@@ -148,14 +203,23 @@ def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
         "level1_grouped_tasks": {
             k: [t.__dict__ for t in v] for k, v in repo["level1_grouped_tasks"].items()
         },
+        "level2_to_level1_map": repo["level2_to_level1_map"],
     }
 
     with open(repo_path, "w", encoding="utf-8") as f:
         json.dump(json_repo, f, ensure_ascii=False, indent=2)
 
+    with open(level2_to_level1_map_path, "w", encoding="utf-8") as f:
+        json.dump(level2_to_level1_map, f, ensure_ascii=False, indent=2)
+
     logger.info("[TASK_REPO_SAVED] path=%s", repo_path)
+    logger.info("[L2_TO_L1_MAP_SAVED] path=%s size=%s", level2_to_level1_map_path, len(level2_to_level1_map))
 
     return repo
+
+
+def build_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
+    return build_task_repository_assets(config)
 
 
 def get_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -195,6 +259,7 @@ def get_task_repository(config: Dict[str, Any]) -> Dict[str, Any]:
         "task_list": task_list,
         "task_index": task_index,
         "level1_grouped_tasks": dict(level1_grouped),
+        "level2_to_level1_map": repo_json.get("level2_to_level1_map", {}),
     }
 
     return repo
