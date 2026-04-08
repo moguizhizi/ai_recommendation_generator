@@ -1161,7 +1161,21 @@ def build_l2_distribution_from_tasks(
     result = []
 
     for l2_idx, count in counter.items():
+        matched_task = next(
+            (
+                task
+                for task in tasks
+                if task.l2_index == l2_idx and task.l1_index is not None
+            ),
+            None,
+        )
+        level1_name = (
+            L1_INDEX_REVERSE.get(matched_task.l1_index, f"unknown_{matched_task.l1_index}")
+            if matched_task is not None
+            else "unknown"
+        )
         result.append({
+            "level1_name": level1_name,
             "l2_index": int(l2_idx),
             "name": L2_INDEX_REVERSE.get(l2_idx, f"unknown_{l2_idx}"),
             "count": int(count),
