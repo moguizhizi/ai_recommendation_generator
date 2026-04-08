@@ -1,8 +1,9 @@
 # app/services/chat_service.py
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from app.core.constants import UserType
 from app.schemas.chat import AIRecPlanData, AIRecPlanRequest, AIRecPlanResponse
+from app.schemas.chat_v2 import AIRecPlanResponseV2, ResponseMetaV2
 from app.services.plan_rule_engine import (
     build_L2_brain_ability_treemap,
     build_advantage_user_modules,
@@ -45,6 +46,49 @@ def generate_ai_plan(
     model_manager: ModelManager,
     config: Dict[str, Any],
 ) -> AIRecPlanResponse:
+    plan_data, display_text = build_ai_plan_content(
+        req=req,
+        llm=llm,
+        model_manager=model_manager,
+        config=config,
+    )
+
+    return AIRecPlanResponse(
+        data=plan_data,
+        display_text=display_text,
+    )
+
+
+def generate_ai_plan_v2(
+    req: AIRecPlanRequest,
+    llm: BaseLLM,
+    model_manager: ModelManager,
+    config: Dict[str, Any],
+) -> AIRecPlanResponseV2:
+    plan_data, display_text = build_ai_plan_content(
+        req=req,
+        llm=llm,
+        model_manager=model_manager,
+        config=config,
+    )
+
+    return AIRecPlanResponseV2(
+        meta=ResponseMetaV2(
+            version="v2",
+            user_id=req.user_id,
+            patient_code=req.patient_code,
+        ),
+        plan=plan_data,
+        display_text=display_text,
+    )
+
+
+def build_ai_plan_content(
+    req: AIRecPlanRequest,
+    llm: BaseLLM,
+    model_manager: ModelManager,
+    config: Dict[str, Any],
+) -> Tuple[AIRecPlanData, str]:
 
     task_repo = get_task_repository(config=config)
     profile = fetch_user_profile(req.user_id, req.patient_code, config=config)
@@ -93,8 +137,4 @@ def generate_ai_plan(
     # 渲染展示文本
     display_text = render_plan_text(plan_data)
 
-    # 返回包装结构
-    return AIRecPlanResponse(
-        data=plan_data,
-        display_text=display_text,
-    )
+    return plan_data, display_text
