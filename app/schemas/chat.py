@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.core.constants import L2BlockDefaults
+from app.core.constants import L2BlockDefaults, ScorePredictionBlockDefaults
 from app.core.errors.error_codes import ErrorCode
 from app.core.errors.exceptions import BizError
 
@@ -29,11 +29,20 @@ class DimensionScorePrediction(BaseModel):
     )
 
 
-class ScorePrediction(BaseModel):
+class ScorePredictionBlock(BaseModel):
+    title: str = Field(
+        default=ScorePredictionBlockDefaults.TITLE,
+        description="模块标题",
+    )
+
     summary: str = Field(
         ...,
-        title="AI 分数预测说明",
-        description="对下一阶段能力变化的预测说明文案",
+        title="预测说明文案",
+        default=ScorePredictionBlockDefaults.SUMMARY,
+    )
+
+    hint: Optional[str] = Field(
+        default=ScorePredictionBlockDefaults.HINT,
     )
 
     attention: DimensionScorePrediction = Field(..., title="注意力完成度预测")
@@ -136,10 +145,10 @@ class AIRecPlanData(BaseModel):
         description="不同用户类型对应不同模块组合",
     )
 
-    score_prediction: ScorePrediction = Field(
+    score_prediction: ScorePredictionBlock = Field(
         ...,
         title="AI 分数预测模块",
-        description="包含预测说明文案与四个维度预测数据",
+        description="一级脑能力的预测数据",
     )
 
     home_advice: List[str] = Field(

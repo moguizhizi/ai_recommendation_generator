@@ -30,7 +30,7 @@ from app.schemas.chat import (
     AIRecPlanData,
     DimensionScorePrediction,
     L2AbilityStat,
-    ScorePrediction,
+    ScorePredictionBlock,
     TrainingItem,
     TrainingModule,
 )
@@ -912,7 +912,7 @@ def build_score_prediction(
     fixed_templates: dict,
     model_manager: ModelManager,
     config: Dict[str, Any],
-) -> ScorePrediction:
+) -> ScorePredictionBlock:
     level1_scores = profile.get("latest_level1_scores", {})
     score_prediction_config = config.get("score_prediction", {})
     max_history_len = int(score_prediction_config.get("max_history_len", 20))
@@ -967,7 +967,7 @@ def build_score_prediction(
             baseline_predicted_score=baseline_predicted,
         )
 
-    return ScorePrediction(
+    return ScorePredictionBlock(
         summary=fixed_templates["score_prediction"],
         attention=build_dim(Level1BrainDomain.ATTENTION.value),
         memory=build_dim(Level1BrainDomain.MEMORY.value),

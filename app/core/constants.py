@@ -34,7 +34,15 @@ class L2BlockDefaults:
     DESCRIPTION = (
         "基于本阶段孩子表现，为您生成专属训练方案，放大孩子的优势、补齐短板，助力认知能力均衡发展"
     )
-    HINT = "点击查看生成依据"
+    HINT = "该占比为AI预测，请以最终训练推送为准"
+
+
+class ScorePredictionBlockDefaults:
+    TITLE = "脑力值AI预测"
+    SUMMARY = (
+        "按照本方案的训练占比规律坚持训练，预计下一阶段孩子的各项一级脑能力值将获得针对性提升哦~"
+    )
+    HINT = "脑力值为AI预测，请以孩子实际表现为准"
 
 
 LEVEL1_DOMAIN_KEY_MAP = {
