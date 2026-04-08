@@ -12,10 +12,10 @@ from models.model_factory import ModelManager
 
 logger = get_logger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["chat-v1"])
 
 
-@router.post("/chat", response_model=AIRecPlanResponse)
+@router.post("/chat", response_model=AIRecPlanResponse, deprecated=True)
 def chat_api(req: AIRecPlanRequest, request: Request):
 
     llm: BaseLLM = request.app.state.llm

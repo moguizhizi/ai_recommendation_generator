@@ -112,7 +112,7 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
     # Step 3: 单参数 fallback
     # ======================
     else:
-        user_row = user_row_by_uid or user_row_by_pid
+        user_row = user_row_by_uid if user_row_by_uid is not None else user_row_by_pid
 
         if user_row is None:
             raise BizError(

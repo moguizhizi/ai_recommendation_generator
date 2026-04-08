@@ -6,7 +6,8 @@ project_root/
 │   ├── main.py                    # FastAPI 入口
 │   │
 │   ├── controllers/               # 🌐 对外 API（SaaS 接口层）
-│   │   ├── chat_controller.py     # /v1/chat/completions（AI 训练方案生成接口）
+│   │   ├── chat_controller.py     # /api/chat（v1，兼容保留）
+│   │   ├── chat_controller_v2.py  # /api/v2/chat（v2，新版接口）
 │   │   ├── billing_controller.py  # /v1/billing（计费 / 账单）
 │   │   └── health_controller.py   # /health（健康检查）
 │   │
