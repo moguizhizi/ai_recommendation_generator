@@ -128,6 +128,35 @@ def _build_level2_to_level1_mapping(task_list: List[Task]) -> Dict[str, str]:
     return level2_to_level1_map
 
 
+def _sort_sub_cognitive_domains_by_task_domain(task: Task) -> str | None:
+    raw_sub_domain = task.sub_cognitive_domain
+    if not raw_sub_domain:
+        return raw_sub_domain
+
+    items = [item.strip() for item in raw_sub_domain.split(";") if item.strip()]
+    if len(items) <= 1:
+        return raw_sub_domain
+
+    task_domain = (task.cognitive_domain or "").strip()
+
+    def sort_key(item: str) -> tuple[int, str]:
+        if "_" not in item:
+            return (1, item)
+
+        level1_name, _ = item.split("_", 1)
+        level1_name = level1_name.strip()
+        return (0 if task_domain and level1_name == task_domain else 1, item)
+
+    sorted_items = sorted(items, key=sort_key)
+    return ";".join(sorted_items)
+
+
+def _serialize_task_for_repository(task: Task) -> Dict[str, Any]:
+    task_dict = task.model_dump()
+    task_dict["sub_cognitive_domain"] = _sort_sub_cognitive_domains_by_task_domain(task)
+    return task_dict
+
+
 def build_task_repository_assets(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     构建任务仓库及其派生索引文件
@@ -198,10 +227,14 @@ def build_task_repository_assets(config: Dict[str, Any]) -> Dict[str, Any]:
 
     # Task 对象需要转换为 dict
     json_repo = {
-        "task_list": [t.__dict__ for t in repo["task_list"]],
-        "task_index": {k: v.__dict__ for k, v in repo["task_index"].items()},
+        "task_list": [_serialize_task_for_repository(t) for t in repo["task_list"]],
+        "task_index": {
+            k: _serialize_task_for_repository(v)
+            for k, v in repo["task_index"].items()
+        },
         "level1_grouped_tasks": {
-            k: [t.__dict__ for t in v] for k, v in repo["level1_grouped_tasks"].items()
+            k: [_serialize_task_for_repository(t) for t in v]
+            for k, v in repo["level1_grouped_tasks"].items()
         },
         "level2_to_level1_map": repo["level2_to_level1_map"],
     }
