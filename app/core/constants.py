@@ -43,6 +43,20 @@ class ScorePredictionBlockDefaults:
         "按照本方案的训练占比规律坚持训练，预计下一阶段孩子的各项一级脑能力值将获得针对性提升哦~"
     )
     HINT = "脑力值为AI预测，请以孩子实际表现为准"
+    LEGENDS = (
+        {
+            "label": "本阶段分值",
+            "description": "本阶段努力成果，也是下一阶段的起跑线",
+        },
+        {
+            "label": "提升参考",
+            "description": "持续训练，孩子3个月后预计提升脑能力水平",
+        },
+        {
+            "label": "回落参考",
+            "description": "未持续训练，孩子预计3/6个月回落脑能力水平",
+        },
+    )
 
 
 LEVEL1_DOMAIN_KEY_MAP = {

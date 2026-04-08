@@ -182,7 +182,9 @@ def fetch_frequency(paradigm_tasks: Dict[str, List[Task]]) -> str:
     return f"每日1次，每次{durations[0]}-{durations[-1]}分钟"
 
 
-def generate_goal_by_llm(paradigm_tasks: Dict[str, List[Task]], llm: BaseLLM) -> str:
+def generate_goal_by_llm(
+    paradigm_tasks: Dict[str, List[Task]], llm: Optional[BaseLLM]
+) -> str:
     """
     根据不同训练范式下的任务 life_desc，总结生成整体训练目标
     """
@@ -205,6 +207,9 @@ def generate_goal_by_llm(paradigm_tasks: Dict[str, List[Task]], llm: BaseLLM) ->
 
     # 2️⃣ 构建 Prompt
     prompt = GoalSummaryPrompt.render(life_desc_text=life_desc_text)
+
+    if llm is None:
+        return "提升综合认知能力与生活应用能力"
 
     # 3️⃣ 直接调用传入的 llm
     try:

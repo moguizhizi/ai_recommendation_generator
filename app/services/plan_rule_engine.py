@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from numbers import Number
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -20,6 +20,7 @@ from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
     Level1BrainDomain,
     ModuleName,
+    ScorePredictionBlockDefaults,
     Level1Score,
     ScoreThreshold,
     UserType,
@@ -30,6 +31,7 @@ from app.schemas.chat import (
     AIRecPlanData,
     DimensionScorePrediction,
     L2AbilityStat,
+    ScoreLegendItem,
     ScorePredictionBlock,
     TrainingItem,
     TrainingModule,
@@ -407,7 +409,7 @@ def build_user_modules_by_threshold(
     enriched_profile: dict,
     level2_to_level1: Dict[str, str],  # 保留参数避免外部报错，但不再使用
     threshold: int,
-    llm: BaseLLM,
+    llm: Optional[BaseLLM],
     l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
 
@@ -572,7 +574,7 @@ def build_user_modules_by_threshold(
 def build_advantage_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
-    llm: BaseLLM,
+    llm: Optional[BaseLLM],
     l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
@@ -590,7 +592,7 @@ def build_advantage_user_modules(
 def build_potential_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
-    llm: BaseLLM,
+    llm: Optional[BaseLLM],
     l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
@@ -608,7 +610,7 @@ def build_potential_user_modules(
 def build_special_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
-    llm: BaseLLM,
+    llm: Optional[BaseLLM],
     l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
@@ -626,7 +628,7 @@ def build_special_user_modules(
 def build_growth_user_modules(
     enriched_profile: dict,
     level2_to_level1: dict,
-    llm: BaseLLM,
+    llm: Optional[BaseLLM],
     l1_task_map: Dict[int, List[Task]]
 ) -> List[TrainingModule]:
     """
@@ -909,7 +911,6 @@ def compute_baseline_prediction(
 
 def build_score_prediction(
     profile: dict,
-    fixed_templates: dict,
     model_manager: ModelManager,
     config: Dict[str, Any],
 ) -> ScorePredictionBlock:
@@ -968,7 +969,10 @@ def build_score_prediction(
         )
 
     return ScorePredictionBlock(
-        summary=fixed_templates["score_prediction"],
+        legends=[
+            ScoreLegendItem(**legend)
+            for legend in ScorePredictionBlockDefaults.LEGENDS
+        ],
         attention=build_dim(Level1BrainDomain.ATTENTION.value),
         memory=build_dim(Level1BrainDomain.MEMORY.value),
         executive_control=build_dim(Level1BrainDomain.EXECUTIVE.value),
