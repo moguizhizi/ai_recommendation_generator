@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.core.constants import L2BlockDefaults
 from app.core.errors.error_codes import ErrorCode
 from app.core.errors.exceptions import BizError
 
@@ -92,6 +93,27 @@ class L2AbilityStat(BaseModel):
     count: int = Field(..., title="任务数量")
     ratio: float = Field(..., title="占比")
 
+class L2AbilityDistributionBlock(BaseModel):
+    title: str = Field(
+        default=L2BlockDefaults.TITLE,
+        description="模块标题",
+    )
+
+    description: str = Field(
+        default=L2BlockDefaults.DESCRIPTION,
+        description="模块说明文案",
+    )
+
+    hint: Optional[str] = Field(
+        default=L2BlockDefaults.HINT,
+        description="提示说明",
+    )
+
+    l2_ability_distribution: List[L2AbilityStat] = Field(
+        ...,
+        title="二级脑能力分布",
+    )
+
 
 class AIRecPlanData(BaseModel):
     user_type: Literal["优势倾向型", "潜能倾向型", "专项优势型", "蓄力成长型"]
@@ -138,10 +160,10 @@ class AIRecPlanData(BaseModel):
         description="模型原始生成全文，用于审计与调试",
     )
 
-    l2_ability_distribution: List[L2AbilityStat] = Field(
+    l2_block: L2AbilityDistributionBlock = Field(
         ...,
-        title="二级脑能力分布",
-        description="推荐任务中各二级脑能力的占比与数量"
+        title="二级脑能力分布模块",
+        description="包含说明文案 + 分布数据"
     )
 
 

@@ -17,7 +17,6 @@ router = APIRouter(prefix="/v2", tags=["chat-v2"])
 
 @router.post("/chat", response_model=AIRecPlanResponseV2)
 def chat_api_v2(req: AIRecPlanRequest, request: Request):
-    llm: BaseLLM = request.app.state.llm
     score_model_manager: ModelManager = request.app.state.model_manager
     config: Dict[str, Any] = request.app.state.config
 
@@ -28,7 +27,7 @@ def chat_api_v2(req: AIRecPlanRequest, request: Request):
     )
 
     result = generate_ai_plan_v2(
-        req, llm, model_manager=score_model_manager, config=config
+        req, model_manager=score_model_manager, config=config
     )
 
     duration = round(time.time() - start_time, 3)

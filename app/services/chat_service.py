@@ -61,13 +61,11 @@ def generate_ai_plan(
 
 def generate_ai_plan_v2(
     req: AIRecPlanRequest,
-    llm: BaseLLM,
     model_manager: ModelManager,
     config: Dict[str, Any],
 ) -> AIRecPlanResponseV2:
     plan_data, display_text = build_ai_plan_content(
         req=req,
-        llm=llm,
         model_manager=model_manager,
         config=config,
     )

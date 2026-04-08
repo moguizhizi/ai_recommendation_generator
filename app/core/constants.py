@@ -29,6 +29,14 @@ class ScoreThreshold:
     POTENTIAL_LINE = 90
 
 
+class L2BlockDefaults:
+    TITLE = "下一阶段认知能力训练分布"
+    DESCRIPTION = (
+        "基于本阶段孩子表现，为您生成专属训练方案，放大孩子的优势、补齐短板，助力认知能力均衡发展"
+    )
+    HINT = "点击查看生成依据"
+
+
 LEVEL1_DOMAIN_KEY_MAP = {
     Level1BrainDomain.PERCEPTION: "perception",
     Level1BrainDomain.ATTENTION: "attention",
