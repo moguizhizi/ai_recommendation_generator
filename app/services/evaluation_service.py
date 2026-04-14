@@ -11,7 +11,9 @@ from sympy import Number
 
 from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
+    L2_INDEX_REVERSE,
     Level1BrainDomain,
+    Level2BrainDomain,
     UserTrainingColumnName,
 )
 from app.services.plan_rule_engine import build_L2_brain_ability_treemap, build_l2_distribution_from_tasks, enrich_user_profile_with_brain_distribution
@@ -21,13 +23,18 @@ from configs.loader import load_config
 
 from utils.dataframe_utils import ColumnAccessor, safe_get
 from utils.logger import get_logger
-from utils.metrics_utils import compute_kl_from_distributions, compute_l1_from_distributions
+from utils.metrics_utils import (
+    compute_kl_from_distributions,
+    compute_l1_from_distributions,
+    to_l2_vector,
+)
 
 logger = get_logger(__name__)
 
 
 class EvaluationService:
     ROUND_DIGITS = 3
+    L2_SIZE = len(Level2BrainDomain)
 
     def __init__(self, config: dict | None = None):
         self.config = config or load_config()
@@ -59,6 +66,7 @@ class EvaluationService:
 
         cols = ColumnAccessor(column_mapping, UserTrainingColumnName)
         metric_results = []
+        l2_distribution_diff_records = []
 
         for _, user_row in filtered_df.iterrows():
             user_id = str(safe_get(user_row, cols.user_id))
@@ -95,6 +103,12 @@ class EvaluationService:
                     ground_truth_l2_distribution,
                     pred_l2_distribution,
                 )
+                l2_distribution_diff_records.extend(
+                    self._build_l2_distribution_diff_records(
+                        ground_truth_l2_distribution,
+                        pred_l2_distribution,
+                    )
+                )
                 task_hit_result = self._compute_task_hit_metrics(
                     recommended_tasks=recommended_tasks,
                     ground_truth_tasks=profile["last_84_days_task_infos"],
@@ -121,6 +135,9 @@ class EvaluationService:
             metric_names,
         )
         task_hit_summary = self._build_task_hit_summary(metrics_df)
+        l2_distribution_diff_summary = self._build_l2_distribution_diff_summary(
+            l2_distribution_diff_records
+        )
 
         result = {
             "total_users": len(filtered_df),
@@ -131,6 +148,7 @@ class EvaluationService:
             "metric_names": metric_names,
             "metrics_summary": metrics_summary,
             "task_hit_summary": task_hit_summary,
+            "l2_distribution_diff_summary": l2_distribution_diff_summary,
         }
         response_result = (
             result
@@ -434,6 +452,81 @@ class EvaluationService:
 
         return summaries
 
+    @classmethod
+    def _build_l2_distribution_diff_records(
+        cls,
+        ground_truth_l2_distribution: list[dict],
+        pred_l2_distribution: list[dict],
+    ) -> list[dict]:
+        ground_truth_vector = to_l2_vector(
+            ground_truth_l2_distribution,
+            l2_size=cls.L2_SIZE,
+        )
+        pred_vector = to_l2_vector(
+            pred_l2_distribution,
+            l2_size=cls.L2_SIZE,
+        )
+        diff_records = []
+
+        for l2_index in range(cls.L2_SIZE):
+            diff = float(ground_truth_vector[l2_index] - pred_vector[l2_index])
+            diff_records.append(
+                {
+                    "name": L2_INDEX_REVERSE.get(l2_index, f"unknown_{l2_index}"),
+                    "diff": round(diff, cls.ROUND_DIGITS),
+                    "abs_diff": round(abs(diff), cls.ROUND_DIGITS),
+                }
+            )
+
+        return diff_records
+
+    @classmethod
+    def _build_l2_distribution_diff_summary(
+        cls,
+        l2_distribution_diff_records: list[dict],
+    ) -> list[dict]:
+        if not l2_distribution_diff_records:
+            return [
+                {
+                    "name": L2_INDEX_REVERSE.get(l2_index, f"unknown_{l2_index}"),
+                    "mean_diff": 0.0,
+                    "mean_abs_diff": 0.0,
+                }
+                for l2_index in range(cls.L2_SIZE)
+            ]
+
+        diff_df = pd.DataFrame(l2_distribution_diff_records)
+        grouped = (
+            diff_df.groupby("name", sort=False)
+            .agg(
+                mean_diff=("diff", "mean"),
+                mean_abs_diff=("abs_diff", "mean"),
+            )
+            .reset_index()
+        )
+        summary_by_name = {
+            row["name"]: {
+                "mean_diff": round(float(row["mean_diff"]), cls.ROUND_DIGITS),
+                "mean_abs_diff": round(float(row["mean_abs_diff"]), cls.ROUND_DIGITS),
+            }
+            for _, row in grouped.iterrows()
+        }
+
+        return [
+            {
+                "name": L2_INDEX_REVERSE.get(l2_index, f"unknown_{l2_index}"),
+                "mean_diff": summary_by_name.get(
+                    L2_INDEX_REVERSE.get(l2_index, f"unknown_{l2_index}"),
+                    {},
+                ).get("mean_diff", 0.0),
+                "mean_abs_diff": summary_by_name.get(
+                    L2_INDEX_REVERSE.get(l2_index, f"unknown_{l2_index}"),
+                    {},
+                ).get("mean_abs_diff", 0.0),
+            }
+            for l2_index in range(cls.L2_SIZE)
+        ]
+
     @staticmethod
     def _build_external_result(result: dict) -> dict:
         metric_summary = {}
@@ -456,6 +549,7 @@ class EvaluationService:
                 "mean_hit_rate": task_hit_summary.get("task_hit_rate", {}).get("mean", 0.0),
                 "mean_cover_rate": task_hit_summary.get("task_cover_rate", {}).get("mean", 0.0),
             },
+            "l2_distribution_diff_summary": result.get("l2_distribution_diff_summary", []),
         }
 
     @staticmethod
