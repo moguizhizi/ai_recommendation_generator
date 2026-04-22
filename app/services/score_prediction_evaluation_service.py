@@ -70,7 +70,9 @@ class ScorePredictionEvaluationService:
         details_df = pd.DataFrame(details)
         summary = self._build_summary(details_df, eval_cfg)
         summary["evaluated_user_count"] = int(len(user_df))
-        summary["user_filter"] = self.user_filter_stats
+
+        if bool(eval_cfg.get("developer_view", False)):
+            summary["user_filter"] = self.user_filter_stats
 
         self._write_outputs(details_df, summary, eval_cfg)
         return summary
@@ -99,8 +101,14 @@ class ScorePredictionEvaluationService:
             errors="coerce",
         )
         complete_score_mask = numeric_required_scores.notna().all(axis=1)
-        filtered_df = user_df.loc[complete_score_mask].copy()
-        filtered_count = int(len(filtered_df))
+        complete_score_count = int(complete_score_mask.sum())
+        latest_gt_week12_mask = self._build_latest_gt_week12_mask(
+            numeric_required_scores,
+            cols,
+        )
+        evaluation_user_mask = complete_score_mask & latest_gt_week12_mask
+        filtered_df = user_df.loc[evaluation_user_mask].copy()
+        improved_score_count = int(evaluation_user_mask.sum())
 
         max_users = eval_cfg.get("max_users")
         if max_users is not None:
@@ -111,12 +119,29 @@ class ScorePredictionEvaluationService:
 
         self.user_filter_stats = {
             "original_user_count": original_count,
-            "complete_score_user_count": filtered_count,
-            "dropped_user_count": original_count - filtered_count,
+            "complete_score_user_count": complete_score_count,
+            "latest_gt_week12_user_count": improved_score_count,
+            "dropped_by_missing_score_count": original_count - complete_score_count,
+            "dropped_by_non_improvement_count": complete_score_count
+            - improved_score_count,
             "sampled_user_count": int(len(filtered_df)),
+            "requires_latest_gt_week12": True,
         }
 
         return filtered_df
+
+    @staticmethod
+    def _build_latest_gt_week12_mask(
+        numeric_scores: pd.DataFrame,
+        cols: ColumnAccessor,
+    ) -> pd.Series:
+        mask = pd.Series(True, index=numeric_scores.index)
+        for spec in DOMAIN_COLUMN_SPECS:
+            latest_col = getattr(cols, f"latest_{spec.column_suffix}")
+            week12_col = getattr(cols, f"week12_{spec.column_suffix}")
+            mask &= numeric_scores[latest_col] > numeric_scores[week12_col]
+
+        return mask
 
     def _build_evaluation_details(
         self,
@@ -322,46 +347,53 @@ class ScorePredictionEvaluationService:
 
     def _build_summary(self, details_df: pd.DataFrame, eval_cfg: Dict[str, Any]) -> dict:
         tolerance = float(eval_cfg.get("tolerance", 5))
+        developer_view = bool(eval_cfg.get("developer_view", False))
         summary = {
             "enabled": True,
             "tolerance": tolerance,
             "prediction_current_week": 12,
             "actual_score_source": "latest",
             "max_users": eval_cfg.get("max_users"),
-            "overall": self._summarize_group(details_df, tolerance),
-            "by_domain": {},
+            "overall": self._summarize_group(
+                details_df,
+                developer_view=developer_view,
+            ),
         }
 
-        if not details_df.empty:
+        if developer_view and not details_df.empty:
+            summary["by_domain"] = {}
             for domain, group in details_df.groupby("domain"):
-                summary["by_domain"][domain] = self._summarize_group(group, tolerance)
+                summary["by_domain"][domain] = self._summarize_group(
+                    group,
+                    developer_view=developer_view,
+                )
 
         return summary
 
-    def _summarize_group(self, df: pd.DataFrame, tolerance: float) -> dict:
+    def _summarize_group(self, df: pd.DataFrame, developer_view: bool) -> dict:
         if df.empty:
-            return {
+            summary = {
                 "sample_count": 0,
                 "mae": None,
-                "rmse": None,
-                "bias": None,
                 "hit_rate": None,
                 "direction_accuracy": None,
-                "baseline_mae": None,
-                "baseline_hit_rate": None,
             }
+            if developer_view:
+                summary["rmse"] = None
+                summary["bias"] = None
+            return summary
 
-        baseline_abs_error = (df["baseline_predicted_score"] - df["actual_score"]).abs()
-        return {
+        summary = {
             "sample_count": int(len(df)),
             "mae": self._round(df["abs_error"].mean()),
-            "rmse": self._round(sqrt((df["error"] ** 2).mean())),
-            "bias": self._round(df["error"].mean()),
             "hit_rate": self._round(df["hit"].mean()),
             "direction_accuracy": self._round(df["direction_correct"].mean()),
-            "baseline_mae": self._round(baseline_abs_error.mean()),
-            "baseline_hit_rate": self._round((baseline_abs_error <= tolerance).mean()),
         }
+        if developer_view:
+            summary["rmse"] = self._round(sqrt((df["error"] ** 2).mean()))
+            summary["bias"] = self._round(df["error"].mean())
+
+        return summary
 
     def _write_outputs(
         self,

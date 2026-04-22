@@ -27,8 +27,8 @@ score_prediction:
 
 score_prediction_evaluation:
   enabled: true
+  developer_view: false
   min_history_len: 3
-  target_offset: 1
   tolerance: 5
   max_users: 5000
   random_state: 42
