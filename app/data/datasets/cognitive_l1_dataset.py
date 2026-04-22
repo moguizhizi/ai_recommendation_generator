@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
+    MAX_HISTORY_WEEKS,
     ParadigmType,
     TaskColumnName,
     UserTrainingColumnName,
@@ -69,55 +70,23 @@ def load_and_preprocess_dataset(config: Dict[str, Any], parquet_name: str):
 
         cols = ColumnAccessor(COLUMN_MAPPING, UserTrainingColumnName)
 
+        weekly_numeric_fields = []
+        for week in range(1, MAX_HISTORY_WEEKS + 1):
+            weekly_numeric_fields.extend(
+                [
+                    getattr(cols, f"week{week}_perception"),
+                    getattr(cols, f"week{week}_attention"),
+                    getattr(cols, f"week{week}_memory"),
+                    getattr(cols, f"week{week}_executive"),
+                ]
+            )
+
         numeric_fields = [
             cols.latest_perception,
             cols.latest_attention,
             cols.latest_memory,
             cols.latest_executive,
-            cols.week1_perception,
-            cols.week1_attention,
-            cols.week1_memory,
-            cols.week1_executive,
-            cols.week2_perception,
-            cols.week2_attention,
-            cols.week2_memory,
-            cols.week2_executive,
-            cols.week3_perception,
-            cols.week3_attention,
-            cols.week3_memory,
-            cols.week3_executive,
-            cols.week4_perception,
-            cols.week4_attention,
-            cols.week4_memory,
-            cols.week4_executive,
-            cols.week5_perception,
-            cols.week5_attention,
-            cols.week5_memory,
-            cols.week5_executive,
-            cols.week6_perception,
-            cols.week6_attention,
-            cols.week6_memory,
-            cols.week6_executive,
-            cols.week7_perception,
-            cols.week7_attention,
-            cols.week7_memory,
-            cols.week7_executive,
-            cols.week8_perception,
-            cols.week8_attention,
-            cols.week8_memory,
-            cols.week8_executive,
-            cols.week9_perception,
-            cols.week9_attention,
-            cols.week9_memory,
-            cols.week9_executive,
-            cols.week10_perception,
-            cols.week10_attention,
-            cols.week10_memory,
-            cols.week10_executive,
-            cols.week11_perception,
-            cols.week11_attention,
-            cols.week11_memory,
-            cols.week11_executive,
+            *weekly_numeric_fields,
             cols.last_84d_latest_perception,
             cols.last_84d_latest_attention,
             cols.last_84d_latest_memory,

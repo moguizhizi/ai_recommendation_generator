@@ -14,6 +14,7 @@ from app.core.cognitive_l1.constants import (
     L2_INDEX_REVERSE,
     Level1BrainDomain,
     Level2BrainDomain,
+    MAX_HISTORY_WEEKS,
     UserTrainingColumnName,
 )
 from app.services.plan_rule_engine import build_L2_brain_ability_treemap, build_l2_distribution_from_tasks, enrich_user_profile_with_brain_distribution
@@ -676,7 +677,7 @@ class EvaluationService:
             "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
         }
 
-        for week in range(1, 12):
+        for week in range(1, MAX_HISTORY_WEEKS + 1):
             profile[f"week{week}_level1_scores"] = _build_level1_scores(
                 user_row, cols, week
             )
