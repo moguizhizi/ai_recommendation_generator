@@ -25,6 +25,17 @@ score_prediction:
       memory: checkpoints/cognitive_l1/memory_lightgbm.txt
       executive_function: checkpoints/cognitive_l1/executive_function_lightgbm.txt
 
+score_prediction_evaluation:
+  enabled: true
+  min_history_len: 3
+  target_offset: 1
+  tolerance: 5
+  max_users: 5000
+  random_state: 42
+  output:
+    summary_file: data/internal/processed/cognitive_l1/score_prediction_evaluation_summary.json
+    details_file: data/internal/processed/cognitive_l1/score_prediction_evaluation_details.parquet
+
 
 runtime:
   timeout: 60
