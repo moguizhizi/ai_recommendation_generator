@@ -78,7 +78,11 @@ def enrich_user_profile_with_domain_histories(
     """
     为用户画像补充各脑能力的连续历史序列
     """
-    min_history_len = int(config.get("score_prediction", {}).get("min_history_len", 3))
+    score_prediction_config = config.get("score_prediction", {})
+    min_history_len = int(score_prediction_config.get("min_history_len", 3))
+    max_history_len = int(
+        score_prediction_config.get("max_history_len", 12)
+    )
 
     def is_valid(value):
         return isinstance(value, Number)
@@ -98,7 +102,7 @@ def enrich_user_profile_with_domain_histories(
 
         seq.append(latest_val)
 
-        for week in range(1, MAX_HISTORY_WEEKS + 1):
+        for week in range(1, max_history_len):
             week_scores = profile.get(f"week{week}_level1_scores")
             if not week_scores:
                 break
