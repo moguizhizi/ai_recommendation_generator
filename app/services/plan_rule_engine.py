@@ -15,6 +15,7 @@ from app.core.cognitive_l1.constants import (
     L1_INDEX_REVERSE,
     L2_INDEX_REVERSE,
     Level2BrainDomain,
+    MAX_HISTORY_WEEKS,
 )
 from app.core.constants import (
     LEVEL1_DOMAIN_KEY_MAP,
@@ -97,8 +98,7 @@ def enrich_user_profile_with_domain_histories(
 
         seq.append(latest_val)
 
-        # week1 ~ week11
-        for week in range(1, 12):
+        for week in range(1, MAX_HISTORY_WEEKS + 1):
             week_scores = profile.get(f"week{week}_level1_scores")
             if not week_scores:
                 break

@@ -4,6 +4,9 @@
 from enum import Enum
 
 
+MAX_HISTORY_WEEKS = 23
+
+
 class TaskColumnName(str, Enum):
 
     TASK_ID = "任务id"
@@ -96,6 +99,66 @@ class UserTrainingColumnName(str, Enum):
     WEEK11_ATTENTION = "倒数十一周_注意力"
     WEEK11_MEMORY = "倒数十一周_记忆力"
     WEEK11_EXECUTIVE = "倒数十一周_执行控制"
+
+    WEEK12_PERCEPTION = "倒数十二周_感知觉"
+    WEEK12_ATTENTION = "倒数十二周_注意力"
+    WEEK12_MEMORY = "倒数十二周_记忆力"
+    WEEK12_EXECUTIVE = "倒数十二周_执行控制"
+
+    WEEK13_PERCEPTION = "倒数十三周_感知觉"
+    WEEK13_ATTENTION = "倒数十三周_注意力"
+    WEEK13_MEMORY = "倒数十三周_记忆力"
+    WEEK13_EXECUTIVE = "倒数十三周_执行控制"
+
+    WEEK14_PERCEPTION = "倒数十四周_感知觉"
+    WEEK14_ATTENTION = "倒数十四周_注意力"
+    WEEK14_MEMORY = "倒数十四周_记忆力"
+    WEEK14_EXECUTIVE = "倒数十四周_执行控制"
+
+    WEEK15_PERCEPTION = "倒数十五周_感知觉"
+    WEEK15_ATTENTION = "倒数十五周_注意力"
+    WEEK15_MEMORY = "倒数十五周_记忆力"
+    WEEK15_EXECUTIVE = "倒数十五周_执行控制"
+
+    WEEK16_PERCEPTION = "倒数十六周_感知觉"
+    WEEK16_ATTENTION = "倒数十六周_注意力"
+    WEEK16_MEMORY = "倒数十六周_记忆力"
+    WEEK16_EXECUTIVE = "倒数十六周_执行控制"
+
+    WEEK17_PERCEPTION = "倒数十七周_感知觉"
+    WEEK17_ATTENTION = "倒数十七周_注意力"
+    WEEK17_MEMORY = "倒数十七周_记忆力"
+    WEEK17_EXECUTIVE = "倒数十七周_执行控制"
+
+    WEEK18_PERCEPTION = "倒数十八周_感知觉"
+    WEEK18_ATTENTION = "倒数十八周_注意力"
+    WEEK18_MEMORY = "倒数十八周_记忆力"
+    WEEK18_EXECUTIVE = "倒数十八周_执行控制"
+
+    WEEK19_PERCEPTION = "倒数十九周_感知觉"
+    WEEK19_ATTENTION = "倒数十九周_注意力"
+    WEEK19_MEMORY = "倒数十九周_记忆力"
+    WEEK19_EXECUTIVE = "倒数十九周_执行控制"
+
+    WEEK20_PERCEPTION = "倒数二十周_感知觉"
+    WEEK20_ATTENTION = "倒数二十周_注意力"
+    WEEK20_MEMORY = "倒数二十周_记忆力"
+    WEEK20_EXECUTIVE = "倒数二十周_执行控制"
+
+    WEEK21_PERCEPTION = "倒数二十一周_感知觉"
+    WEEK21_ATTENTION = "倒数二十一周_注意力"
+    WEEK21_MEMORY = "倒数二十一周_记忆力"
+    WEEK21_EXECUTIVE = "倒数二十一周_执行控制"
+
+    WEEK22_PERCEPTION = "倒数二十二周_感知觉"
+    WEEK22_ATTENTION = "倒数二十二周_注意力"
+    WEEK22_MEMORY = "倒数二十二周_记忆力"
+    WEEK22_EXECUTIVE = "倒数二十二周_执行控制"
+
+    WEEK23_PERCEPTION = "倒数二十三周_感知觉"
+    WEEK23_ATTENTION = "倒数二十三周_注意力"
+    WEEK23_MEMORY = "倒数二十三周_记忆力"
+    WEEK23_EXECUTIVE = "倒数二十三周_执行控制"
 
     EPISODIC_MEMORY = "情景记忆"
     INTERFERENCE_CONTROL = "干扰控制"

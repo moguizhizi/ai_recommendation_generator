@@ -8,6 +8,7 @@ import pandas as pd
 
 from app.core.cognitive_l1.constants import (
     CognitiveL1DatasetName,
+    MAX_HISTORY_WEEKS,
     UserTrainingColumnName,
 )
 from app.core.constants import Level1BrainDomain
@@ -170,7 +171,7 @@ def fetch_user_profile(user_id: str, patient_code: str, config: Dict[str, Any]) 
         "weekly_missed_tasks": safe_get(user_row, cols.last_7_days_no_task),
     }
 
-    for week in range(1, 12):
+    for week in range(1, MAX_HISTORY_WEEKS + 1):
         profile[f"week{week}_level1_scores"] = _build_level1_scores(
             user_row, cols, week
         )
