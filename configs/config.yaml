@@ -15,8 +15,9 @@ score_prediction:
   type: lightgbm   # 预测模型类型：lightgbm / xgboost / mlp / least_square
   min_history_len: 3
   max_history_len: 12
-  alpha_c: 150
+  alpha_c: 130
   n_model_weight: 0.8
+  growth_scale: 0.5
   calibration:
     enabled: true
 
