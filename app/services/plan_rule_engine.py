@@ -54,16 +54,20 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 SCORE_PREDICTION_CALIBRATION = {
-    "intercept": 24.68659729297665,
+    "intercept": 29.11778638753185,
     "domain_offsets": {
-        Level1BrainDomain.PERCEPTION.value: 6.79303143833153,
-        Level1BrainDomain.EXECUTIVE.value: 7.924283847981658,
-        Level1BrainDomain.ATTENTION.value: 5.340248455689218,
-        Level1BrainDomain.MEMORY.value: 4.629033550973759,
+        Level1BrainDomain.PERCEPTION.value: 0.7714439717984267,
+        Level1BrainDomain.EXECUTIVE.value: 1.6833667542227393,
+        Level1BrainDomain.ATTENTION.value: -0.8850601851851536,
+        Level1BrainDomain.MEMORY.value: -1.5697505407508832,
     },
-    "current_score_coef": 0.8044490653240812,
-    "predicted_delta_coef": 0.22686576480744924,
+    "current_score_coef": 0.7248964443389594,
+    "predicted_delta_coef": 0.8415507698561739,
+    "current_score_squared_coef": 8.487099982240045,
+    "predicted_delta_squared_coef": -1.0775112996893952,
+    "current_delta_interaction_coef": -11.238390151258145,
 }
+MAX_PREDICTED_LEVEL1_SCORE = 159
 
 # 用户类型 -> 模块映射（集中管理）
 USER_TYPE_MODULE_MAP = {
@@ -811,7 +815,7 @@ def compute_M(N, current, range_val, alpha_c=150):
     # --- Step 2: 防止预测下降 ---
     # 至少增长一个极小值 or range_val
     min_increase = max(1e-6, range_val)
-    N = math.ceil(0.9 * N + 0.1 * (current + min_increase))
+    N = math.ceil(0.8 * N + 0.2 * (current + min_increase))
 
     # --- Step 3: 上界控制 ---
     max_cap = 160 - 1  # 你这里留了 buffer（很好）
@@ -875,11 +879,22 @@ def direct_horizon_forecast(
 def calibrate_predicted_score(predicted: float, current: float, domain: str) -> float:
     predicted_delta = predicted - current
     domain_offset = SCORE_PREDICTION_CALIBRATION["domain_offsets"].get(domain, 0.0)
+    scaled_current = current / 100
+    scaled_delta = predicted_delta / 20
     calibrated = (
         SCORE_PREDICTION_CALIBRATION["intercept"]
         + domain_offset
         + SCORE_PREDICTION_CALIBRATION["current_score_coef"] * current
         + SCORE_PREDICTION_CALIBRATION["predicted_delta_coef"] * predicted_delta
+        + SCORE_PREDICTION_CALIBRATION["current_score_squared_coef"]
+        * scaled_current
+        * scaled_current
+        + SCORE_PREDICTION_CALIBRATION["predicted_delta_squared_coef"]
+        * scaled_delta
+        * scaled_delta
+        + SCORE_PREDICTION_CALIBRATION["current_delta_interaction_coef"]
+        * scaled_current
+        * scaled_delta
     )
     return max(calibrated, current + 1e-6)
 
@@ -1005,7 +1020,7 @@ def build_score_prediction(
             calibration_enabled=calibration_enabled,
         )
 
-        predicted = Level1Score.clamp(predicted)
+        predicted = min(Level1Score.clamp(predicted), MAX_PREDICTED_LEVEL1_SCORE)
         predicted = int(round(predicted))
 
         return DimensionScorePrediction(
