@@ -68,6 +68,7 @@ SCORE_PREDICTION_CALIBRATION = {
     "current_delta_interaction_coef": -11.238390151258145,
 }
 MAX_PREDICTED_LEVEL1_SCORE = 159
+DEFAULT_N_MODEL_WEIGHT = 0.8
 
 # 用户类型 -> 模块映射（集中管理）
 USER_TYPE_MODULE_MAP = {
@@ -796,7 +797,13 @@ def build_features(history: list[float], max_history_len: int) -> dict:
 
     return feats
 
-def compute_M(N, current, range_val, alpha_c=150):
+def compute_M(
+    N,
+    current,
+    range_val,
+    alpha_c=150,
+    n_model_weight=DEFAULT_N_MODEL_WEIGHT,
+):
     """
     计算最终修正值 M
 
@@ -815,7 +822,8 @@ def compute_M(N, current, range_val, alpha_c=150):
     # --- Step 2: 防止预测下降 ---
     # 至少增长一个极小值 or range_val
     min_increase = max(1e-6, range_val)
-    N = math.ceil(0.8 * N + 0.2 * (current + min_increase))
+    n_min_increase_weight = 1 - n_model_weight
+    N = math.ceil(n_model_weight * N + n_min_increase_weight * (current + min_increase))
 
     # --- Step 3: 上界控制 ---
     max_cap = 160 - 1  # 你这里留了 buffer（很好）
@@ -854,6 +862,7 @@ def direct_horizon_forecast(
     max_history_len: int,
     feature_cols: list[str],
     alpha_c: float,
+    n_model_weight: float,
     calibration_enabled: bool = True,
 ) -> float:
     effective_history = history[-max_history_len:]
@@ -870,7 +879,13 @@ def direct_horizon_forecast(
 
     X = pd.DataFrame([feats]).reindex(columns=feature_cols, fill_value=np.nan)
     pred = float(model.predict(X)[0])
-    pred = compute_M(pred, current, range_val, alpha_c=alpha_c)
+    pred = compute_M(
+        pred,
+        current,
+        range_val,
+        alpha_c=alpha_c,
+        n_model_weight=n_model_weight,
+    )
     if calibration_enabled:
         pred = calibrate_predicted_score(pred, current, domain)
     return pred
@@ -897,6 +912,15 @@ def calibrate_predicted_score(predicted: float, current: float, domain: str) -> 
         * scaled_delta
     )
     return max(calibrated, current + 1e-6)
+
+
+def resolve_n_model_weight(score_prediction_config: Dict[str, Any]) -> float:
+    n_model_weight = float(
+        score_prediction_config.get("n_model_weight", DEFAULT_N_MODEL_WEIGHT)
+    )
+    if not 0 <= n_model_weight <= 1:
+        raise ValueError("score_prediction.n_model_weight must be between 0 and 1")
+    return n_model_weight
 
 def compute_baseline_prediction(
     history: list[float],
@@ -974,6 +998,7 @@ def build_score_prediction(
     score_prediction_config = config.get("score_prediction", {})
     max_history_len = int(score_prediction_config.get("max_history_len", 20))
     alpha_c = float(score_prediction_config.get("alpha_c", 150))
+    n_model_weight = resolve_n_model_weight(score_prediction_config)
     calibration_enabled = bool(
         score_prediction_config.get("calibration", {}).get("enabled", True)
     )
@@ -1017,6 +1042,7 @@ def build_score_prediction(
             max_history_len=max_history_len,
             feature_cols=feature_cols,
             alpha_c=alpha_c,
+            n_model_weight=n_model_weight,
             calibration_enabled=calibration_enabled,
         )
 
