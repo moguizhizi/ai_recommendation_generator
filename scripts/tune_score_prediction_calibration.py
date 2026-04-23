@@ -98,19 +98,45 @@ def apply_group_multipliers(
     return multipliers, predicted
 
 
-def fit_linear_calibrator(df: pd.DataFrame) -> tuple[pd.Series, float, np.ndarray]:
-    feature_df = pd.get_dummies(df["domain"], prefix="domain", dtype=float)
-    feature_df["current_score"] = df["current_score"].astype(float)
-    feature_df["predicted_delta"] = df["predicted_delta"].astype(float)
-
+def fit_ridge(
+    feature_df: pd.DataFrame,
+    y: np.ndarray,
+    alpha: float,
+) -> tuple[pd.Series, float, np.ndarray]:
     x = np.column_stack([np.ones(len(feature_df)), feature_df.to_numpy(dtype=float)])
-    y = df["actual_score"].to_numpy(dtype=float)
-    coef, *_ = np.linalg.lstsq(x, y, rcond=None)
+    penalty = np.eye(x.shape[1]) * alpha
+    penalty[0, 0] = 0.0
+    coef = np.linalg.solve(x.T @ x + penalty, x.T @ y)
     predicted = round_score(x @ coef)
 
     coefficients = pd.Series(coef[1:], index=feature_df.columns)
     intercept = float(coef[0])
     return coefficients, intercept, predicted
+
+
+def fit_linear_calibrator(df: pd.DataFrame) -> tuple[pd.Series, float, np.ndarray]:
+    feature_df = pd.get_dummies(df["domain"], prefix="domain", dtype=float)
+    feature_df["current_score"] = df["current_score"].astype(float)
+    feature_df["predicted_delta"] = df["predicted_delta"].astype(float)
+
+    y = df["actual_score"].to_numpy(dtype=float)
+    return fit_ridge(feature_df, y, alpha=100)
+
+
+def fit_quadratic_calibrator(df: pd.DataFrame) -> tuple[pd.Series, float, np.ndarray]:
+    feature_df = pd.get_dummies(df["domain"], prefix="domain", dtype=float)
+    current = df["current_score"].astype(float)
+    predicted_delta = df["predicted_delta"].astype(float)
+    feature_df["current_score"] = current
+    feature_df["predicted_delta"] = predicted_delta
+    feature_df["current_score_squared"] = (current / 100) ** 2
+    feature_df["predicted_delta_squared"] = (predicted_delta / 20) ** 2
+    feature_df["current_delta_interaction"] = (
+        (current / 100) * (predicted_delta / 20)
+    )
+
+    y = df["actual_score"].to_numpy(dtype=float)
+    return fit_ridge(feature_df, y, alpha=1)
 
 
 def build_metrics(df: pd.DataFrame) -> tuple[list[Metrics], dict[str, object]]:
@@ -153,6 +179,13 @@ def build_metrics(df: pd.DataFrame) -> tuple[list[Metrics], dict[str, object]]:
     coefficients, intercept, predicted = fit_linear_calibrator(df)
     metrics.append(summarize("linear_domain_current_delta", actual, predicted))
     details["linear_domain_current_delta"] = {
+        "intercept": intercept,
+        "coefficients": coefficients.to_dict(),
+    }
+
+    coefficients, intercept, predicted = fit_quadratic_calibrator(df)
+    metrics.append(summarize("quadratic_domain_current_delta", actual, predicted))
+    details["quadratic_domain_current_delta"] = {
         "intercept": intercept,
         "coefficients": coefficients.to_dict(),
     }
