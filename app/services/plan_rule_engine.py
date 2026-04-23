@@ -54,21 +54,22 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 SCORE_PREDICTION_CALIBRATION = {
-    "intercept": 29.11778638753185,
+    "intercept": 30.19985575851483,
     "domain_offsets": {
-        Level1BrainDomain.PERCEPTION.value: 0.7714439717984267,
-        Level1BrainDomain.EXECUTIVE.value: 1.6833667542227393,
-        Level1BrainDomain.ATTENTION.value: -0.8850601851851536,
-        Level1BrainDomain.MEMORY.value: -1.5697505407508832,
+        Level1BrainDomain.PERCEPTION.value: 0.7740898905638366,
+        Level1BrainDomain.EXECUTIVE.value: 1.6741317149158792,
+        Level1BrainDomain.ATTENTION.value: -0.870208154487251,
+        Level1BrainDomain.MEMORY.value: -1.578013450898442,
     },
-    "current_score_coef": 0.7248964443389594,
-    "predicted_delta_coef": 0.8415507698561739,
-    "current_score_squared_coef": 8.487099982240045,
-    "predicted_delta_squared_coef": -1.0775112996893952,
-    "current_delta_interaction_coef": -11.238390151258145,
+    "current_score_coef": 0.7177825143867731,
+    "predicted_delta_coef": 1.1381356826330762,
+    "current_score_squared_coef": 8.563756572221774,
+    "predicted_delta_squared_coef": -1.4399836208653778,
+    "current_delta_interaction_coef": -15.695383627727347,
 }
 MAX_PREDICTED_LEVEL1_SCORE = 159
 DEFAULT_N_MODEL_WEIGHT = 0.8
+DEFAULT_GROWTH_SCALE = 0.5
 
 # 用户类型 -> 模块映射（集中管理）
 USER_TYPE_MODULE_MAP = {
@@ -803,6 +804,7 @@ def compute_M(
     range_val,
     alpha_c=150,
     n_model_weight=DEFAULT_N_MODEL_WEIGHT,
+    growth_scale=DEFAULT_GROWTH_SCALE,
 ):
     """
     计算最终修正值 M
@@ -832,7 +834,7 @@ def compute_M(
     delta = min(N - current, max_cap - current)
 
     # --- Step 4: 插值 ---
-    M = current + 1.5 * delta
+    M = current + growth_scale * k * delta
 
     # --- Step 5: 下界保护 ---
     M = max(M, current + 1e-6)
@@ -852,7 +854,7 @@ def compute_alpha(current, c=150, s=10):
     - current ↑ → k ↓
     - current → 160 → k → 0
     """
-    return 1 / (1 + np.exp((current - c) / s))
+    return 1 + 1 / (1 + np.exp((current - c) / s))
 
 def direct_horizon_forecast(
     model,
@@ -863,6 +865,7 @@ def direct_horizon_forecast(
     feature_cols: list[str],
     alpha_c: float,
     n_model_weight: float,
+    growth_scale: float,
     calibration_enabled: bool = True,
 ) -> float:
     effective_history = history[-max_history_len:]
@@ -885,6 +888,7 @@ def direct_horizon_forecast(
         range_val,
         alpha_c=alpha_c,
         n_model_weight=n_model_weight,
+        growth_scale=growth_scale,
     )
     if calibration_enabled:
         pred = calibrate_predicted_score(pred, current, domain)
@@ -921,6 +925,17 @@ def resolve_n_model_weight(score_prediction_config: Dict[str, Any]) -> float:
     if not 0 <= n_model_weight <= 1:
         raise ValueError("score_prediction.n_model_weight must be between 0 and 1")
     return n_model_weight
+
+
+def resolve_growth_scale(score_prediction_config: Dict[str, Any]) -> float:
+    growth_scale = float(
+        score_prediction_config.get("growth_scale", DEFAULT_GROWTH_SCALE)
+    )
+    if growth_scale < 0:
+        raise ValueError(
+            "score_prediction.growth_scale must be greater than or equal to 0"
+        )
+    return growth_scale
 
 def compute_baseline_prediction(
     history: list[float],
@@ -999,6 +1014,7 @@ def build_score_prediction(
     max_history_len = int(score_prediction_config.get("max_history_len", 20))
     alpha_c = float(score_prediction_config.get("alpha_c", 150))
     n_model_weight = resolve_n_model_weight(score_prediction_config)
+    growth_scale = resolve_growth_scale(score_prediction_config)
     calibration_enabled = bool(
         score_prediction_config.get("calibration", {}).get("enabled", True)
     )
@@ -1043,6 +1059,7 @@ def build_score_prediction(
             feature_cols=feature_cols,
             alpha_c=alpha_c,
             n_model_weight=n_model_weight,
+            growth_scale=growth_scale,
             calibration_enabled=calibration_enabled,
         )
 
