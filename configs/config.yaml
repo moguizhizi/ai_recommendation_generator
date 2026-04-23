@@ -17,7 +17,6 @@ score_prediction:
   max_history_len: 12
   alpha_c: 150
   n_model_weight: 0.8
-  n_min_increase_weight: 0.2
   calibration:
     enabled: true
 
