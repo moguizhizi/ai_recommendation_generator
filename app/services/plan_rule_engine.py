@@ -1,5 +1,6 @@
 # app/services/plan_rule_engine.py
 import json
+import math
 import random
 import re
 from collections import defaultdict
@@ -51,6 +52,18 @@ from models.model_factory import ModelManager
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+SCORE_PREDICTION_CALIBRATION = {
+    "intercept": 24.68659729297665,
+    "domain_offsets": {
+        Level1BrainDomain.PERCEPTION.value: 6.79303143833153,
+        Level1BrainDomain.EXECUTIVE.value: 7.924283847981658,
+        Level1BrainDomain.ATTENTION.value: 5.340248455689218,
+        Level1BrainDomain.MEMORY.value: 4.629033550973759,
+    },
+    "current_score_coef": 0.8044490653240812,
+    "predicted_delta_coef": 0.22686576480744924,
+}
 
 # 用户类型 -> 模块映射（集中管理）
 USER_TYPE_MODULE_MAP = {
@@ -798,7 +811,7 @@ def compute_M(N, current, range_val, alpha_c=150):
     # --- Step 2: 防止预测下降 ---
     # 至少增长一个极小值 or range_val
     min_increase = max(1e-6, range_val)
-    N = min(N, current + min_increase)
+    N = math.ceil(0.9 * N + 0.1 * (current + min_increase))
 
     # --- Step 3: 上界控制 ---
     max_cap = 160 - 1  # 你这里留了 buffer（很好）
@@ -807,7 +820,7 @@ def compute_M(N, current, range_val, alpha_c=150):
     delta = min(N - current, max_cap - current)
 
     # --- Step 4: 插值 ---
-    M = current + k * delta
+    M = current + 1.5 * delta
 
     # --- Step 5: 下界保护 ---
     M = max(M, current + 1e-6)
@@ -833,9 +846,11 @@ def direct_horizon_forecast(
     model,
     history: list[float],
     current: float,
+    domain: str,
     max_history_len: int,
     feature_cols: list[str],
     alpha_c: float,
+    calibration_enabled: bool = True,
 ) -> float:
     effective_history = history[-max_history_len:]
 
@@ -852,7 +867,21 @@ def direct_horizon_forecast(
     X = pd.DataFrame([feats]).reindex(columns=feature_cols, fill_value=np.nan)
     pred = float(model.predict(X)[0])
     pred = compute_M(pred, current, range_val, alpha_c=alpha_c)
+    if calibration_enabled:
+        pred = calibrate_predicted_score(pred, current, domain)
     return pred
+
+
+def calibrate_predicted_score(predicted: float, current: float, domain: str) -> float:
+    predicted_delta = predicted - current
+    domain_offset = SCORE_PREDICTION_CALIBRATION["domain_offsets"].get(domain, 0.0)
+    calibrated = (
+        SCORE_PREDICTION_CALIBRATION["intercept"]
+        + domain_offset
+        + SCORE_PREDICTION_CALIBRATION["current_score_coef"] * current
+        + SCORE_PREDICTION_CALIBRATION["predicted_delta_coef"] * predicted_delta
+    )
+    return max(calibrated, current + 1e-6)
 
 def compute_baseline_prediction(
     history: list[float],
@@ -930,6 +959,9 @@ def build_score_prediction(
     score_prediction_config = config.get("score_prediction", {})
     max_history_len = int(score_prediction_config.get("max_history_len", 20))
     alpha_c = float(score_prediction_config.get("alpha_c", 150))
+    calibration_enabled = bool(
+        score_prediction_config.get("calibration", {}).get("enabled", True)
+    )
     lightgbm_config = score_prediction_config.get("lightgbm", {})
     feature_columns_path = Path(
         lightgbm_config.get(
@@ -966,9 +998,11 @@ def build_score_prediction(
             model=model_manager.get(model_key),
             history=history,
             current=current,
+            domain=level1_key,
             max_history_len=max_history_len,
             feature_cols=feature_cols,
             alpha_c=alpha_c,
+            calibration_enabled=calibration_enabled,
         )
 
         predicted = Level1Score.clamp(predicted)
