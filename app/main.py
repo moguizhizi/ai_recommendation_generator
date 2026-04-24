@@ -21,6 +21,7 @@ from models.model_factory import ModelManager
 # 初始化日志系统
 setup_logging()
 logger = get_logger(__name__)
+bootstrap_config = load_config()
 
 
 @asynccontextmanager
@@ -29,7 +30,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting AI Recommendation Service...")
 
     try:
-        config = load_config()
+        config = bootstrap_config
 
         app.state.config = config
 
@@ -57,7 +58,12 @@ app.add_exception_handler(BizError, biz_error_handler)
 
 app.add_exception_handler(Exception, generic_error_handler)
 
-app.include_router(chat_router, prefix="/api")
+# Router enable/disable is controlled by configs/config.yaml.
+if bootstrap_config.get("routers", {}).get("chat_router_enabled", True):
+    app.include_router(chat_router, prefix="/api")
+
 app.include_router(chat_router_v2, prefix="/api")
 app.include_router(health_router, prefix="/api")
-app.include_router(eval_router, prefix="/api")
+
+if bootstrap_config.get("routers", {}).get("eval_router_enabled", True):
+    app.include_router(eval_router, prefix="/api")
