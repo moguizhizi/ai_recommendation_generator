@@ -10,6 +10,10 @@ llm:
     api_key: sk-xxxxx
     model: qwen3_5
 
+routers:
+  chat_router_enabled: true
+  eval_router_enabled: true
+
 
 score_prediction:
   type: lightgbm   # 预测模型类型：lightgbm / xgboost / mlp / least_square
