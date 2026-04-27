@@ -162,6 +162,8 @@ def build_task_repository_assets(config: Dict[str, Any]) -> Dict[str, Any]:
     构建任务仓库及其派生索引文件
     """
 
+    logger.info("[TASK_REPO_BUILD_START] start building task repository assets")
+
     raw_task_info = fetch_task_info(config=config)
     raw_tasks = raw_task_info.get("tasks", [])
 
@@ -247,6 +249,10 @@ def build_task_repository_assets(config: Dict[str, Any]) -> Dict[str, Any]:
 
     logger.info("[TASK_REPO_SAVED] path=%s", repo_path)
     logger.info("[L2_TO_L1_MAP_SAVED] path=%s size=%s", level2_to_level1_map_path, len(level2_to_level1_map))
+    logger.info(
+        "[TASK_REPO_BUILD_END] finished building task repository assets valid_tasks=%s",
+        len(task_list),
+    )
 
     return repo
 

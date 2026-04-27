@@ -17,9 +17,6 @@ from utils.csv_utils import csv_to_parquet
 from utils.io_utils import copy_file
 from utils.logger import get_logger
 
-from app.core import sync_state
-from pathlib import Path
-
 logger = get_logger(__name__)
 
 async def raw_data_copy_job(config):
@@ -43,115 +40,92 @@ async def raw_data_copy_job(config):
             logger.info(f"Raw data copied: {src} -> {dst}")
 
         logger.info("Raw data sync finished")
-
-        # 通知 CSV pipeline 可以开始
-        sync_state.raw_ready_event.set()
+        return True
 
     except Exception:
         logger.exception("Raw data sync failed")
+        return False
 
 
-async def csv_to_parquet_job(
+async def csv_to_parquet_once(
     csv_path: str,
     parquet_path: str,
-    interval_seconds: int,
     config: dict,
 ):
 
-    first_run = True
+    try:
 
-    logger.info(f"Waiting for raw data sync before starting CSV job: {csv_path}")
-    await sync_state.raw_ready_event.wait()
-    logger.info(f"Raw data ready. Starting CSV job: {csv_path}")
+        logger.info(f"Starting CSV to Parquet sync: {csv_path} -> {parquet_path}")
+        await asyncio.to_thread(
+            csv_to_parquet,
+            csv_path=csv_path,
+            parquet_path=parquet_path,
+            config=config,
+        )
+        logger.info(f"Finished CSV to Parquet sync: {csv_path} -> {parquet_path}")
 
-    while True:
+        parquet_name = Path(parquet_path).stem
+        logger.info(f"Starting dataset preprocess: {parquet_name}")
+        await asyncio.to_thread(
+            load_and_preprocess_dataset,
+            config=config,
+            parquet_name=parquet_name,
+        )
+        logger.info(f"Finished dataset preprocess: {parquet_name}")
 
-        try:
+        return True
 
-            logger.info(f"Starting CSV to Parquet sync: {csv_path} -> {parquet_path}")
-            await asyncio.to_thread(
-                csv_to_parquet,
-                csv_path=csv_path,
-                parquet_path=parquet_path,
+    except Exception:
+        logger.exception("CSV job failed")
+        return False
+
+
+async def task_repository_once(config):
+
+    try:
+        await asyncio.to_thread(build_task_repository_assets, config)
+    except Exception:
+        logger.exception("Repository build failed")
+
+
+async def build_train_eval_dataset_once(config):
+
+    try:
+        await asyncio.to_thread(build_train_eval_dataset, config)
+    except Exception:
+        logger.exception("Train/eval dataset build failed")
+
+
+async def run_sync_pipeline(config: Dict[str, Any]):
+
+    task_config = config.get("csv_to_parquet", {})
+    raw_files = task_config.get("raw_files", [])
+
+    logger.info("Starting scheduled sync pipeline")
+
+    raw_data_ready = await raw_data_copy_job(config)
+    if not raw_data_ready:
+        logger.warning("Skip scheduled sync pipeline because raw data sync failed")
+        return
+
+    csv_results = await asyncio.gather(
+        *(
+            csv_to_parquet_once(
+                csv_path=item["csv"],
+                parquet_path=item["parquet"],
                 config=config,
             )
-            logger.info(f"Finished CSV to Parquet sync: {csv_path} -> {parquet_path}")
+            for item in raw_files
+        )
+    )
 
-            parquet_name = Path(parquet_path).stem
-            logger.info(f"Starting dataset preprocess: {parquet_name}")
-            await asyncio.to_thread(
-                load_and_preprocess_dataset,
-                config=config,
-                parquet_name=parquet_name,
-            )
-            logger.info(f"Finished dataset preprocess: {parquet_name}")
+    if not all(csv_results):
+        logger.warning("Skip downstream builds because at least one CSV job failed")
+        return
 
-            if first_run:
+    await asyncio.gather(
+        task_repository_once(config),
+        build_train_eval_dataset_once(config),
+    )
 
-                sync_state.csv_ready_counter += 1
-
-                logger.info(
-                    f"CSV initial sync finished "
-                    f"({sync_state.csv_ready_counter}/"
-                    f"{sync_state.total_csv_jobs})"
-                )
-
-                if sync_state.csv_ready_counter == sync_state.total_csv_jobs:
-
-                    logger.info("All CSV ready")
-
-                    sync_state.csv_ready_event.set()
-
-                first_run = False
-
-        except Exception:
-            logger.exception("CSV job failed")
-
-        await asyncio.sleep(interval_seconds)
-
-
-async def task_repository_job(config, interval_seconds):
-
-    logger.info("Waiting for CSV sync...")
-
-    await sync_state.csv_ready_event.wait()
-
-    logger.info("CSV ready. Start building repository")
-
-    while True:
-
-        try:
-            await asyncio.to_thread(build_task_repository_assets, config)
-        except Exception:
-            logger.exception("Repository build failed")
-
-        await asyncio.sleep(interval_seconds)
-
-async def build_train_eval_dataset_job(config, interval_seconds):
-    """
-    后台任务：周期性构建训练 / 验证数据集
-
-    流程：
-    1. 等待 CSV 数据同步完成（数据准备阶段）
-    2. 触发数据集构建（训练 / 验证数据）
-    3. 按固定时间间隔循环执行，保证数据持续更新
-
-    Args:
-        config: 配置项
-        interval_seconds: 每次构建的间隔时间（秒）
-    """
-
-    logger.info("Waiting for CSV sync...")
-
-    await sync_state.csv_ready_event.wait()
-
-    logger.info("CSV ready. Start building train/eval dataset")
-
-    while True:
-
-        try:
-            await asyncio.to_thread(build_train_eval_dataset, config)
-        except Exception:
-            logger.exception("Train/eval dataset build failed")
-
-        await asyncio.sleep(interval_seconds)
+    logger.info("Scheduled sync pipeline finished")

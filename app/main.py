@@ -41,13 +41,17 @@ async def lifespan(app: FastAPI):
 
         app.state.model_manager = model_manager
 
-        start_sync_tasks(config)
+        app.state.sync_scheduler = start_sync_tasks(config)
 
     except Exception as e:
         logger.exception("Failed to initialize services")
         raise e
 
     yield
+
+    sync_scheduler = getattr(app.state, "sync_scheduler", None)
+    if sync_scheduler:
+        sync_scheduler.shutdown(wait=False)
 
     logger.info("Shutting down AI Recommendation Service...")
 

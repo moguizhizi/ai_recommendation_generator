@@ -1,0 +1,25 @@
+# 忽略 .env 文件
+.env
+
+# 忽略 .vscode 目录
+.vscode/
+
+# 忽略 __pycache__ 目录（包括 app/core/__pycache__/ 等）
+**/__pycache__/
+
+# 忽略 logs 目录
+logs/
+
+# 忽略 tests/__pycache__/ 目录
+tests/__pycache__/
+
+# 忽略 checkpoints 目录
+checkpoints/
+
+# 忽略 data
+data/external
+data/internal
+
+# 忽略 docker
+docker/Dockerfile
+docker/docker-compose.yml

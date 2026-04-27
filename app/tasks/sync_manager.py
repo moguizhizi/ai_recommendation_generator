@@ -1,55 +1,56 @@
 # services/sync_tasks.py
 
 import asyncio
-from app.core import sync_state
-from app.tasks.data_sync_task import (
-    build_train_eval_dataset_job,
-    csv_to_parquet_job,
-    raw_data_copy_job,
-    task_repository_job,
-)
+
+from app.tasks.data_sync_task import run_sync_pipeline
 from utils.logger import get_logger
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 logger = get_logger(__name__)
+
+_sync_pipeline_lock = asyncio.Lock()
+
+
+async def _run_sync_pipeline_locked(config):
+    if _sync_pipeline_lock.locked():
+        logger.warning("Sync pipeline is already running; skip this trigger")
+        return
+
+    async with _sync_pipeline_lock:
+        await run_sync_pipeline(config)
 
 
 def start_sync_tasks(config):
 
-    task_config = config.get("csv_to_parquet", {})
-    interval = task_config.get("interval_seconds", 300)
-    raw_files = task_config.get("raw_files", [])
+    schedule_config = config.get("sync_tasks", {}).get("schedule", {})
+    hour = schedule_config.get("hour", 2)
+    minute = schedule_config.get("minute", 0)
+    timezone = schedule_config.get("timezone", "Asia/Shanghai")
+    run_on_startup = schedule_config.get("run_on_startup", True)
 
-    sync_state.total_csv_jobs = len(raw_files)
+    scheduler = AsyncIOScheduler(timezone=timezone)
+    trigger = CronTrigger(hour=hour, minute=minute, timezone=timezone)
 
-    logger.info(f"Total CSV sync jobs: {sync_state.total_csv_jobs}")
+    scheduler.add_job(
+        _run_sync_pipeline_locked,
+        trigger=trigger,
+        args=[config],
+        id="sync_pipeline",
+        name="sync_pipeline",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+    scheduler.start()
 
-    # 1️⃣ raw 数据复制
-    asyncio.create_task(raw_data_copy_job(config))
-
-    # 2️⃣ csv pipeline
-    for item in raw_files:
-
-        asyncio.create_task(
-            csv_to_parquet_job(
-                csv_path=item["csv"],
-                parquet_path=item["parquet"],
-                interval_seconds=interval,
-                config=config,
-            )
-        )
-
-    # 3️⃣ repository
-    asyncio.create_task(
-        task_repository_job(
-            config=config,
-            interval_seconds=interval,
-        )
+    logger.info(
+        f"Sync pipeline scheduled with CronTrigger(hour={hour}, "
+        f"minute={minute}, timezone={timezone})"
     )
 
-    # train_eval_dataset
-    asyncio.create_task(
-        build_train_eval_dataset_job(
-            config=config,
-            interval_seconds=interval,
-        )
-    )
+    if run_on_startup:
+        logger.info("Starting initial sync pipeline")
+        asyncio.create_task(_run_sync_pipeline_locked(config))
+
+    return scheduler
